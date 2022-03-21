@@ -20,13 +20,13 @@ const defaultShards = 256
 
 // Trivial tests
 
-// serial Set 
+// serial Set
 
 func BenchmarkMapSet(b *testing.B) {
 	testWithSizes(b, func(b *testing.B, testSize int) {
 		m := makeMap(testSize)
 		for i := 0; i < b.N; i++ {
-			m[key(i % testSize)] = value()
+			m[key(i%testSize)] = value()
 		}
 	})
 }
@@ -35,7 +35,7 @@ func BenchmarkFreeCacheSet(b *testing.B) {
 	testWithSizes(b, func(b *testing.B, testSize int) {
 		cache := freecache.NewCache(testSize * maxEntrySize)
 		for i := 0; i < b.N; i++ {
-			cache.Set([]byte(key(i % testSize)), value(), 0)
+			cache.Set([]byte(key(i%testSize)), value(), 0)
 		}
 	})
 }
@@ -44,7 +44,7 @@ func BenchmarkBigCacheSet(b *testing.B) {
 	testWithSizes(b, func(b *testing.B, testSize int) {
 		cache := initBigCache(testSize)
 		for i := 0; i < b.N; i++ {
-			cache.Set(key(i % testSize), value())
+			cache.Set(key(i%testSize), value())
 		}
 	})
 }
@@ -53,7 +53,7 @@ func BenchmarkConcurrentMapSet(b *testing.B) {
 	testWithSizes(b, func(b *testing.B, testSize int) {
 		var m sync.Map
 		for i := 0; i < b.N; i++ {
-			m.Store(key(i % testSize), value())
+			m.Store(key(i%testSize), value())
 		}
 	})
 }
@@ -72,7 +72,7 @@ func BenchmarkMapGet(b *testing.B) {
 		var ignored int = 0
 		b.StartTimer()
 		for i := 0; i < b.N; i++ {
-			if m[key(i % testSize)] != nil {
+			if m[key(i%testSize)] != nil {
 				ignored++
 			}
 		}
@@ -141,7 +141,7 @@ func BenchmarkFreeCacheSetParallel(b *testing.B) {
 			id := rand.Intn(1000)
 			counter := 0
 			for pb.Next() {
-				cache.Set([]byte(parallelKey(id, counter % testSize)), value(), 0)
+				cache.Set([]byte(parallelKey(id, counter%testSize)), value(), 0)
 				counter = counter + 1
 			}
 		})
@@ -157,7 +157,7 @@ func BenchmarkBigCacheSetParallel(b *testing.B) {
 			id := rand.Intn(1000)
 			counter := 0
 			for pb.Next() {
-				cache.Set(parallelKey(id, counter % testSize), value())
+				cache.Set(parallelKey(id, counter%testSize), value())
 				counter = counter + 1
 			}
 		})
@@ -172,7 +172,7 @@ func BenchmarkConcurrentMapSetParallel(b *testing.B) {
 			id := rand.Intn(1000)
 			counter := 0
 			for pb.Next() {
-				m.Store(parallelKey(id, counter % testSize), value())
+				m.Store(parallelKey(id, counter%testSize), value())
 				counter = counter + 1
 			}
 		})
@@ -285,7 +285,7 @@ func BenchmarkFreeCacheZipfParalle(b *testing.B) {
 		b.RunParallel(func(pb *testing.PB) {
 			src := rand.NewSource(time.Now().Unix())
 			randObj := rand.New(src)
-			zipf := rand.NewZipf(randObj, 1.01, 1, uint64(testSize * zipfFactor))
+			zipf := rand.NewZipf(randObj, 1.01, 1, uint64(testSize*zipfFactor))
 
 			var missed uint64
 			for pb.Next() {
@@ -319,7 +319,7 @@ func BenchmarkBigCacheZipfParallel(b *testing.B) {
 		b.RunParallel(func(pb *testing.PB) {
 			src := rand.NewSource(time.Now().Unix())
 			randObj := rand.New(src)
-			zipf := rand.NewZipf(randObj, 1.01, 1, uint64(testSize * zipfFactor))
+			zipf := rand.NewZipf(randObj, 1.01, 1, uint64(testSize*zipfFactor))
 
 			var missed uint64
 			for pb.Next() {
@@ -353,7 +353,7 @@ func BenchmarkSCacheZipfParallel(b *testing.B) {
 		b.RunParallel(func(pb *testing.PB) {
 			src := rand.NewSource(time.Now().Unix())
 			randObj := rand.New(src)
-			zipf := rand.NewZipf(randObj, 1.01, 1, uint64(testSize * zipfFactor))
+			zipf := rand.NewZipf(randObj, 1.01, 1, uint64(testSize*zipfFactor))
 
 			var misses uint64
 			for pb.Next() {
@@ -385,7 +385,7 @@ func testWithSizes(b *testing.B, f func(b *testing.B, testSize int)) {
 		multFactor = 1
 	}
 
-	testSizes := []int{ int(10000000 * multFactor), int(1000000 * multFactor), int(100000 * multFactor) }
+	testSizes := []int{int(10000000 * multFactor), int(1000000 * multFactor), int(100000 * multFactor)}
 
 	for _, testSize := range testSizes {
 		b.Run(fmt.Sprintf("%d", testSize), func(b *testing.B) {
@@ -403,7 +403,7 @@ func value() []byte {
 }
 
 func getZipfFactor() int {
-	zipfFactorString:= os.Getenv("ZIPF_FACTOR")
+	zipfFactorString := os.Getenv("ZIPF_FACTOR")
 	zipfFactor, _ := strconv.Atoi(zipfFactorString)
 	if zipfFactor <= 0 {
 		zipfFactor = 2
