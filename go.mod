@@ -1,6 +1,6 @@
 module github.com/allegro/bigcache-bench
 
-go 1.13
+go 1.15
 
 require (
 	github.com/allegro/bigcache/v2 v2.1.3

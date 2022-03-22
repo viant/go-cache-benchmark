@@ -1,3 +1,17 @@
+// Copyright (c) 2022 Viant Inc.
+//
+//    Licensed under the Apache License, Version 2.0 (the "License"); you may
+//    not use this file except in compliance with the License. You may obtain
+//    a copy of the License at
+//
+//         http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+//    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+//    License for the specific language governing permissions and limitations
+//    under the License.
+
 package main
 
 import (
@@ -268,10 +282,11 @@ func BenchmarkConcurrentMapGetParallel(b *testing.B) {
 	})
 }
 
-// parallel Zipf
+// parallel Zipf + eviction
 
-func BenchmarkFreeCacheZipfParalle(b *testing.B) {
-	zipfFactor := getZipfFactor()
+func BenchmarkFreeCacheZipfParallel(b *testing.B) {
+	missPenalty := getMissPenalty()
+
 	testWithSizes(b, func(b *testing.B, testSize int) {
 		b.StopTimer()
 		cache := freecache.NewCache(testSize * maxEntrySize)
@@ -283,9 +298,7 @@ func BenchmarkFreeCacheZipfParalle(b *testing.B) {
 
 		b.StartTimer()
 		b.RunParallel(func(pb *testing.PB) {
-			src := rand.NewSource(time.Now().Unix())
-			randObj := rand.New(src)
-			zipf := rand.NewZipf(randObj, 1.01, 1, uint64(testSize*zipfFactor))
+			zipf := getZipf(testSize)
 
 			var missed uint64
 			for pb.Next() {
@@ -294,6 +307,10 @@ func BenchmarkFreeCacheZipfParalle(b *testing.B) {
 				if v == nil {
 					cache.Set(k, value(), 0)
 					missed = missed + 1
+
+					if missPenalty > 0 {
+						time.Sleep(missPenalty)
+					}
 				}
 			}
 
@@ -305,7 +322,8 @@ func BenchmarkFreeCacheZipfParalle(b *testing.B) {
 }
 
 func BenchmarkBigCacheZipfParallel(b *testing.B) {
-	zipfFactor := getZipfFactor()
+	missPenalty := getMissPenalty()
+
 	testWithSizes(b, func(b *testing.B, testSize int) {
 		b.StopTimer()
 		cache := initBigCache(testSize)
@@ -317,9 +335,7 @@ func BenchmarkBigCacheZipfParallel(b *testing.B) {
 
 		b.StartTimer()
 		b.RunParallel(func(pb *testing.PB) {
-			src := rand.NewSource(time.Now().Unix())
-			randObj := rand.New(src)
-			zipf := rand.NewZipf(randObj, 1.01, 1, uint64(testSize*zipfFactor))
+			zipf := getZipf(testSize)
 
 			var missed uint64
 			for pb.Next() {
@@ -327,7 +343,11 @@ func BenchmarkBigCacheZipfParallel(b *testing.B) {
 				v, _ := cache.Get(k)
 				if v == nil {
 					cache.Set(k, value())
-					missed = missed + 1
+					missed++
+
+					if missPenalty > 0 {
+						time.Sleep(missPenalty)
+					}
 				}
 			}
 
@@ -339,10 +359,11 @@ func BenchmarkBigCacheZipfParallel(b *testing.B) {
 }
 
 func BenchmarkSCacheZipfParallel(b *testing.B) {
-	zipfFactor := getZipfFactor()
+	missInterval := getMissPenalty()
+
 	testWithSizes(b, func(b *testing.B, testSize int) {
 		b.StopTimer()
-		cache := initSCache(testSize / 2)
+		cache := initSCache(testSize)
 		for i := 0; i < testSize; i++ {
 			cache.Set(key(i), value())
 		}
@@ -351,9 +372,7 @@ func BenchmarkSCacheZipfParallel(b *testing.B) {
 
 		b.StartTimer()
 		b.RunParallel(func(pb *testing.PB) {
-			src := rand.NewSource(time.Now().Unix())
-			randObj := rand.New(src)
-			zipf := rand.NewZipf(randObj, 1.01, 1, uint64(testSize*zipfFactor))
+			zipf := getZipf(testSize)
 
 			var misses uint64
 			for pb.Next() {
@@ -362,6 +381,9 @@ func BenchmarkSCacheZipfParallel(b *testing.B) {
 				if v == nil {
 					cache.Set(k, value())
 					misses = misses + 1
+					if missInterval > 0 {
+						time.Sleep(missInterval)
+					}
 				}
 			}
 
@@ -373,10 +395,6 @@ func BenchmarkSCacheZipfParallel(b *testing.B) {
 }
 
 // util functions
-
-func makeMap(size int) map[string][]byte {
-	return make(map[string][]byte, size)
-}
 
 func testWithSizes(b *testing.B, f func(b *testing.B, testSize int)) {
 	testSizeFactorString := os.Getenv("TEST_SIZE_FACTOR")
@@ -395,11 +413,34 @@ func testWithSizes(b *testing.B, f func(b *testing.B, testSize int)) {
 }
 
 func key(i int) string {
-	return fmt.Sprintf("key-%010d", i)
+	return fmt.Sprintf("key-%012d", i)
+}
+
+func parallelKey(threadID int, counter int) string {
+	return fmt.Sprintf("key-%04d-%008d", threadID, counter)
 }
 
 func value() []byte {
 	return make([]byte, 100)
+}
+
+func getMissPenalty() time.Duration {
+	vs := os.Getenv("MISS_PENALTY")
+	v, _ := strconv.Atoi(vs)
+	return time.Duration(int64(v)) * time.Millisecond
+}
+
+// rand helpers
+
+func getZipf(testSize int) *rand.Zipf {
+	src := rand.NewSource(time.Now().Unix())
+	randObj := rand.New(src)
+
+	zipfS := getZipfS()
+	zipfV := getZipfV()
+	zipfFactor := getZipfFactor()
+
+	return rand.NewZipf(randObj, zipfS, zipfV, uint64(testSize*zipfFactor))
 }
 
 func getZipfFactor() int {
@@ -412,14 +453,38 @@ func getZipfFactor() int {
 	return zipfFactor
 }
 
-func parallelKey(threadID int, counter int) string {
-	return fmt.Sprintf("key-%04d-%06d", threadID, counter)
+func getZipfS() float64 {
+	vs := os.Getenv("ZIPF_S")
+	v, _ := strconv.ParseFloat(vs, 64)
+
+	if v <= 1 {
+		v = 1.01
+	}
+
+	return v
+}
+
+func getZipfV() float64 {
+	vs := os.Getenv("ZIPF_V")
+	v, _ := strconv.ParseFloat(vs, 64)
+
+	if v < 1 {
+		v = 1.0
+	}
+
+	return v
+}
+
+// cache helpers
+
+func makeMap(size int) map[string][]byte {
+	return make(map[string][]byte, size)
 }
 
 func initSCache(entries int) *scache.Cache {
 	cache, _ := scache.New(&scache.Config{
 		Shards:     defaultShards,
-		MaxEntries: entries,
+		MaxEntries: entries / 2,
 		EntrySize:  maxEntrySize,
 	})
 
