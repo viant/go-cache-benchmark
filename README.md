@@ -8,6 +8,8 @@ Benchmarks for comparing cache Golang cache libraries.
 
 Based off https://github.com/allegro/bigcache-bench.
 
+The primary motivation of this repository is to create an even comparison of caching libraries.
+
 Currently compares the following available libraries / implementations:
 
 1. [FreeCache](https://github.com/coocood/freecache)
@@ -20,14 +22,14 @@ Currently compares the following available libraries / implementations:
 
 The benchmark runs with a default of 10,000,000 elements stored, then 1,000,000, then lastly 100,000 elements.
 
-1. Benchmark setting values without eviction, in serial and parallel.
+1. Benchmark setting of values without eviction, in serial and parallel.
 2. Prepopulate and benchmark getting values without misses, in serial and parallel.
 3. Prepoulate and benchmark eviction policy using requests following a Zipf distribution, setting on cache miss, in parallel only.
 
 More will be added, including:
 * Test GC churn caused by application behavior while cache system is running in memory
-* Naive eviction algorithms
-* Other caching libraries
+* Comparison with naive eviction algorithms
+* Comparisons with other caching libraries
 
 # Sample results
 

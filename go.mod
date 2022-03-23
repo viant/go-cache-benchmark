@@ -1,4 +1,4 @@
-module github.com/allegro/bigcache-bench
+module github.com/viant/go-cache-benchmark
 
 go 1.15
 
