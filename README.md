@@ -2,6 +2,8 @@
 
 **This repository is currently a work-in-progress.**
 
+Requires at least Go 1.15
+
 Benchmarks for comparing cache Golang cache libraries.
 
 Based off https://github.com/allegro/bigcache-bench.
@@ -128,7 +130,7 @@ ok      github.com/allegro/bigcache-bench       142.277s
 
 ## Using native Go
 
-Should use at least Go 1.5.
+Requires at least Go 1.15
 
 `go test -bench=. -benchmen -benchtime=4s .`
 
