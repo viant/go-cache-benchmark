@@ -11,11 +11,11 @@
 //    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 //    License for the specific language governing permissions and limitations
 //    under the License.
-
 package main
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"strconv"
@@ -396,14 +396,34 @@ func BenchmarkSCacheZipfParallel(b *testing.B) {
 
 // util functions
 
-func testWithSizes(b *testing.B, f func(b *testing.B, testSize int)) {
-	testSizeFactorString := os.Getenv("TEST_SIZE_FACTOR")
-	multFactor, err := strconv.ParseFloat(testSizeFactorString, 64)
-	if err != nil {
-		multFactor = 1
+func getEnvInt64(varName string, defaultVal int64) int64 {
+	vs := os.Getenv(varName)
+	v, e := strconv.ParseInt(vs, 10, 64)
+	if e != nil {
+		v = defaultVal
 	}
+	return v
+}
 
-	testSizes := []int{int(10000000 * multFactor), int(1000000 * multFactor), int(100000 * multFactor)}
+func getEnvFloat64(varName string, defaultVal float64) float64 {
+	vs := os.Getenv(varName)
+	v, err := strconv.ParseFloat(vs, 64)
+	if err != nil {
+		v = defaultVal
+	}
+	return v
+}
+
+func testWithSizes(b *testing.B, f func(b *testing.B, testSize int)) {
+	multFactor := getEnvFloat64("TEST_SIZE_FACTOR", 1.0)
+
+	singleOnly := os.Getenv("SINGLE_LOAD")
+	var testSizes []int
+	if singleOnly == "" {
+		testSizes = []int{int(10000000 * multFactor), int(1000000 * multFactor), int(100000 * multFactor)}
+	} else {
+		testSizes = []int{int(1000000 * multFactor)}
+	}
 
 	for _, testSize := range testSizes {
 		b.Run(fmt.Sprintf("%d", testSize), func(b *testing.B) {
@@ -413,21 +433,23 @@ func testWithSizes(b *testing.B, f func(b *testing.B, testSize int)) {
 }
 
 func key(i int) string {
+	// generates a 16 byte key
 	return fmt.Sprintf("key-%012d", i)
 }
 
 func parallelKey(threadID int, counter int) string {
-	return fmt.Sprintf("key-%04d-%008d", threadID, counter)
+	// generates a 17 byte key with parallel support, used avoid collision
+	return fmt.Sprintf("key-%04d-%08d", threadID, counter)
 }
 
 func value() []byte {
+	// allocates emptye byte space
 	return make([]byte, 100)
 }
 
 func getMissPenalty() time.Duration {
-	vs := os.Getenv("MISS_PENALTY")
-	v, _ := strconv.Atoi(vs)
-	return time.Duration(int64(v)) * time.Millisecond
+	v := getEnvInt64("MISS_PENALTY", 0)
+	return time.Duration(v) * time.Millisecond
 }
 
 // rand helpers
@@ -436,43 +458,11 @@ func getZipf(testSize int) *rand.Zipf {
 	src := rand.NewSource(time.Now().Unix())
 	randObj := rand.New(src)
 
-	zipfS := getZipfS()
-	zipfV := getZipfV()
-	zipfFactor := getZipfFactor()
+	zipfS := getEnvFloat64("ZIPF_S", 1.01)
+	zipfV := getEnvFloat64("ZIPF_V", 1.0)
+	zipfFactor := getEnvFloat64("ZIPF_FACTOR", 2.0)
 
-	return rand.NewZipf(randObj, zipfS, zipfV, uint64(testSize*zipfFactor))
-}
-
-func getZipfFactor() int {
-	zipfFactorString := os.Getenv("ZIPF_FACTOR")
-	zipfFactor, _ := strconv.Atoi(zipfFactorString)
-	if zipfFactor <= 0 {
-		zipfFactor = 2
-	}
-
-	return zipfFactor
-}
-
-func getZipfS() float64 {
-	vs := os.Getenv("ZIPF_S")
-	v, _ := strconv.ParseFloat(vs, 64)
-
-	if v <= 1 {
-		v = 1.01
-	}
-
-	return v
-}
-
-func getZipfV() float64 {
-	vs := os.Getenv("ZIPF_V")
-	v, _ := strconv.ParseFloat(vs, 64)
-
-	if v < 1 {
-		v = 1.0
-	}
-
-	return v
+	return rand.NewZipf(randObj, zipfS, zipfV, uint64(math.Round(float64(testSize)*zipfFactor)))
 }
 
 // cache helpers
@@ -482,6 +472,7 @@ func makeMap(size int) map[string][]byte {
 }
 
 func initSCache(entries int) *scache.Cache {
+	// since SCache allocates 2x buffer, divide max entries by 2
 	cache, _ := scache.New(&scache.Config{
 		Shards:     defaultShards,
 		MaxEntries: entries / 2,

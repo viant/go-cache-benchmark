@@ -2,7 +2,7 @@
 
 **This repository is currently a work-in-progress.**
 
-Requires at least Go 1.15
+Requires at least Go 1.13
 
 Benchmarks for comparing cache Golang cache libraries.
 
@@ -30,6 +30,12 @@ More will be added, including:
 * Test GC churn caused by application behavior while cache system is running in memory
 * Comparison with naive eviction algorithms
 * Comparisons with other caching libraries
+
+# Observations
+
+1. `SCache` is the only cache that does not allocate memory on read. This can be checked by using the `-cpuprofile` option and viewing the CPU trace resulting in no pathways that lead to an `alloc` (and subsequently a GC).
+2. `Scache` seems to be generally the fastest performing cache. Standard operation seems to occur in 68% of `BigCache` and 45% of `FreeCache`.
+3. `SCache` tends to have the highest miss / lowest hit ratio with the Zipf distribution test. The other caches seem to get about 1% miss rate whereas `SCache` seems to get about 5% miss rate. This could be problematic if cache misses are dramatically more expensive than cache hits.
 
 # Sample results
 
