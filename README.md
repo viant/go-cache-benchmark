@@ -157,5 +157,5 @@ See [standard library `rand`'s `Zipf` type](https://pkg.go.dev/math/rand#NewZipf
 * `ZIPF_V` - defaults to `1`. Sets initial offset for Zipf probability, set as `v`.
 
 
-* `MISS_PENALTY` increases milliseconds of wait in the case of a cache miss for benchmarks that test eviction.
+* `MISS_PENALTY` - defaults to `0`. Sets milliseconds of wait in the case of a cache miss for benchmarks that test eviction.
 
