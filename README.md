@@ -17,6 +17,7 @@ Currently compares the following available libraries / implementations:
 3. [SCache](https://github.com/viant/scache)
 4. Non-evicting native `map` 
 5. Non-evicting standard library `sync.Map`
+6. [`golang-lru`](https://github.com/hashicorp/golang-lru) 
 
 # Descriptions of benchmarks
 
@@ -35,7 +36,9 @@ More will be added, including:
 
 1. `SCache` is the only cache that does not allocate memory on read. This can be checked by using the `-cpuprofile` option and viewing the CPU trace resulting in no pathways that lead to an `alloc` (and subsequently a GC).
 2. `Scache` seems to be generally the fastest performing cache. Standard operation seems to occur in 68% of `BigCache` and 45% of `FreeCache`.
-3. `SCache` tends to have the highest miss / lowest hit ratio with the Zipf distribution test. The other caches seem to get about 1% miss rate whereas `SCache` seems to get about 5% miss rate. This could be problematic if cache misses are dramatically more expensive than cache hits.
+3. `SCache` tends to have the highest miss / lowest hit ratio with the Zipf distribution test. The other caches seem to get about 1-2% miss rate whereas `SCache` seems to get about 5% miss rate. This could be problematic if cache misses are dramatically more expensive than cache hits.
+
+[Further observations.](./further-observations.md)
 
 # Sample results
 
@@ -72,7 +75,7 @@ cache size      : 6144 KB
 cpu cores       : 4
 cache_alignment : 64
 
-$ docker run --rm -it -v $HOME/go-workspace:/go -v "$PWD":/w -w /w -e TEST_SIZE_FACTOR=0.1 golang:1.15 go test -bench=.  -benchmem -benchtime=1s .
+$ docker run --rm -it -v "$PWD":/w -w /w -e TEST_SIZE_FACTOR=0.1 golang:1.15 go test -bench=.  -benchmem -benchtime=1s .
 goos: linux
 goarch: amd64
 pkg: github.com/allegro/bigcache-bench
@@ -158,7 +161,7 @@ Refer to [standard library documentation](https://pkg.go.dev/cmd/go/internal/tes
 *This section may change if there's a better way to control tests.*
 
 * `TEST_SIZE_FACTOR` - defaults to `1`. Multiplies the number of elements stored.
-
+* `SINGLE_LOAD` - set to non-empty string to only benchmark the run with 1,000,000 elements (multiplier still applied).
 
 See [standard library `rand`'s `Zipf` type](https://pkg.go.dev/math/rand#NewZipf)
 
@@ -166,6 +169,11 @@ See [standard library `rand`'s `Zipf` type](https://pkg.go.dev/math/rand#NewZipf
 * `ZIPF_S` - defaults to `1.01`. Sets curvature of Zipf probability (increases hit likelihood dramatically), set as `s`.
 * `ZIPF_V` - defaults to `1`. Sets initial offset for Zipf probability, set as `v`.
 
-
 * `MISS_PENALTY` - defaults to `0`. Sets milliseconds of wait in the case of a cache miss for benchmarks that test eviction.
 
+### Golang provided environment variables
+
+Some useful ones include
+
+* `GODEBUG` with value `gctrace=1` to have Go print metrics per garbage collect.
+* `GOGC` with value `off` to turn off Go's garbage collection.

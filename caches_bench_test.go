@@ -18,6 +18,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"runtime"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/allegro/bigcache/v2"
 	"github.com/coocood/freecache"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/viant/scache"
 )
 
@@ -285,17 +287,15 @@ func BenchmarkConcurrentMapGetParallel(b *testing.B) {
 // parallel Zipf + eviction
 
 func BenchmarkFreeCacheZipfParallel(b *testing.B) {
+	b.StopTimer()
 	missPenalty := getMissPenalty()
-
 	testWithSizes(b, func(b *testing.B, testSize int) {
-		b.StopTimer()
 		cache := freecache.NewCache(testSize * maxEntrySize)
 		for i := 0; i < testSize; i++ {
 			cache.Set([]byte(key(i)), value(), 0)
 		}
 
 		var misses uint64
-
 		b.StartTimer()
 		b.RunParallel(func(pb *testing.PB) {
 			zipf := getZipf(testSize)
@@ -317,22 +317,23 @@ func BenchmarkFreeCacheZipfParallel(b *testing.B) {
 			atomic.AddUint64(&misses, missed)
 		})
 
+		b.StopTimer()
 		b.ReportMetric(float64(misses), "misses")
 	})
+
+	runtime.GC()
 }
 
 func BenchmarkBigCacheZipfParallel(b *testing.B) {
+	b.StopTimer()
 	missPenalty := getMissPenalty()
-
 	testWithSizes(b, func(b *testing.B, testSize int) {
-		b.StopTimer()
 		cache := initBigCache(testSize)
 		for i := 0; i < testSize; i++ {
 			cache.Set(key(i), value())
 		}
 
 		var misses uint64
-
 		b.StartTimer()
 		b.RunParallel(func(pb *testing.PB) {
 			zipf := getZipf(testSize)
@@ -354,22 +355,24 @@ func BenchmarkBigCacheZipfParallel(b *testing.B) {
 			atomic.AddUint64(&misses, missed)
 		})
 
+		b.StopTimer()
 		b.ReportMetric(float64(misses), "misses")
 	})
+
+	runtime.GC()
 }
 
 func BenchmarkSCacheZipfParallel(b *testing.B) {
-	missInterval := getMissPenalty()
+	b.StopTimer()
+	missPenalty := getMissPenalty()
 
 	testWithSizes(b, func(b *testing.B, testSize int) {
-		b.StopTimer()
 		cache := initSCache(testSize)
 		for i := 0; i < testSize; i++ {
 			cache.Set(key(i), value())
 		}
 
 		var totalMisses uint64
-
 		b.StartTimer()
 		b.RunParallel(func(pb *testing.PB) {
 			zipf := getZipf(testSize)
@@ -381,8 +384,8 @@ func BenchmarkSCacheZipfParallel(b *testing.B) {
 				if v == nil {
 					cache.Set(k, value())
 					misses = misses + 1
-					if missInterval > 0 {
-						time.Sleep(missInterval)
+					if missPenalty > 0 {
+						time.Sleep(missPenalty)
 					}
 				}
 			}
@@ -390,8 +393,54 @@ func BenchmarkSCacheZipfParallel(b *testing.B) {
 			atomic.AddUint64(&totalMisses, misses)
 		})
 
+		b.StopTimer()
 		b.ReportMetric(float64(totalMisses), "misses")
 	})
+
+	runtime.GC()
+}
+
+func BenchmarkHashiCacheZipfParallel(b *testing.B) {
+	b.StopTimer()
+	missPenalty := getMissPenalty()
+
+	testWithSizes(b, func(b *testing.B, testSize int) {
+		b.StopTimer()
+		cache, err := lru.New(testSize)
+		if err != nil {
+			b.Errorf("%s", err)
+		}
+
+		for i := 0; i < testSize; i++ {
+			cache.Add(key(i), value())
+		}
+
+		var totalMisses uint64
+		b.StartTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			zipf := getZipf(testSize)
+
+			var misses uint64
+			for pb.Next() {
+				k := key(int(zipf.Uint64()))
+				v, _ := cache.Get(k)
+				if v == nil {
+					cache.Add(k, value())
+					misses = misses + 1
+					if missPenalty > 0 {
+						time.Sleep(missPenalty)
+					}
+				}
+			}
+
+			atomic.AddUint64(&totalMisses, misses)
+		})
+
+		b.StopTimer()
+		b.ReportMetric(float64(totalMisses), "misses")
+	})
+
+	runtime.GC()
 }
 
 // util functions
