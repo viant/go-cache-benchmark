@@ -341,8 +341,8 @@ func BenchmarkBigCacheZipfParallel(b *testing.B) {
 			var missed uint64
 			for pb.Next() {
 				k := key(int(zipf.Uint64()))
-				v, _ := cache.Get(k)
-				if v == nil {
+				_, e := cache.Get(k)
+				if e == nil {
 					cache.Set(k, value())
 					missed++
 
@@ -380,8 +380,8 @@ func BenchmarkSCacheZipfParallel(b *testing.B) {
 			var misses uint64
 			for pb.Next() {
 				k := key(int(zipf.Uint64()))
-				v, _ := cache.Get(k)
-				if v == nil {
+				_, e := cache.Get(k)
+				if e != nil {
 					cache.Set(k, value())
 					misses = misses + 1
 					if missPenalty > 0 {
@@ -522,6 +522,7 @@ func makeMap(size int) map[string][]byte {
 
 func initSCache(entries int) *scache.Cache {
 	// since SCache allocates 2x buffer, divide max entries by 2
+	// https://github.com/viant/scache/blob/master/config.go#L33
 	cache, _ := scache.New(&scache.Config{
 		Shards:     defaultShards,
 		MaxEntries: entries / 2,
