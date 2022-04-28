@@ -14,6 +14,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/rand"
@@ -189,9 +190,7 @@ func BenchmarkSCacheGetParallel(b *testing.B) {
 // parallel Zipf + eviction
 
 func BenchmarkFreeCacheEvictZipfParallel(b *testing.B) {
-	b.StopTimer()
-	missPenalty := getMissPenalty()
-	testWithSizes(b, func(b *testing.B, testSize int) {
+	testSweepZipf(b, func(b *testing.B, testSize int, missPenalty time.Duration, getZipf func() distMaker) {
 		cache := freecache.NewCache(testSize * maxEntrySize)
 		for i := 0; i < testSize; i++ {
 			cache.Set([]byte(key(i)), value(), 0)
@@ -200,7 +199,7 @@ func BenchmarkFreeCacheEvictZipfParallel(b *testing.B) {
 		var misses uint64
 		b.StartTimer()
 		b.RunParallel(func(pb *testing.PB) {
-			zipf := getZipf(testSize)
+			zipf := getZipf()
 
 			var missed uint64
 			for pb.Next() {
@@ -222,14 +221,10 @@ func BenchmarkFreeCacheEvictZipfParallel(b *testing.B) {
 		b.StopTimer()
 		b.ReportMetric(float64(misses), "misses")
 	})
-
-	runtime.GC()
 }
 
 func BenchmarkBigCacheEvictZipfParallel(b *testing.B) {
-	b.StopTimer()
-	missPenalty := getMissPenalty()
-	testWithSizes(b, func(b *testing.B, testSize int) {
+	testSweepZipf(b, func(b *testing.B, testSize int, missPenalty time.Duration, getZipf func() distMaker) {
 		cache := initBigCache(testSize)
 		for i := 0; i < testSize; i++ {
 			cache.Set(key(i), value())
@@ -238,7 +233,7 @@ func BenchmarkBigCacheEvictZipfParallel(b *testing.B) {
 		var misses uint64
 		b.StartTimer()
 		b.RunParallel(func(pb *testing.PB) {
-			zipf := getZipf(testSize)
+			zipf := getZipf()
 
 			var missed uint64
 			for pb.Next() {
@@ -260,15 +255,10 @@ func BenchmarkBigCacheEvictZipfParallel(b *testing.B) {
 		b.StopTimer()
 		b.ReportMetric(float64(misses), "misses")
 	})
-
-	runtime.GC()
 }
 
 func BenchmarkSCacheEvictZipfParallel(b *testing.B) {
-	b.StopTimer()
-	missPenalty := getMissPenalty()
-
-	testWithSizes(b, func(b *testing.B, testSize int) {
+	testSweepZipf(b, func(b *testing.B, testSize int, missPenalty time.Duration, getZipf func() distMaker) {
 		cache := initSCache(testSize)
 		for i := 0; i < testSize; i++ {
 			cache.Set(key(i), value())
@@ -277,7 +267,7 @@ func BenchmarkSCacheEvictZipfParallel(b *testing.B) {
 		var totalMisses uint64
 		b.StartTimer()
 		b.RunParallel(func(pb *testing.PB) {
-			zipf := getZipf(testSize)
+			zipf := getZipf()
 
 			var misses uint64
 			for pb.Next() {
@@ -298,15 +288,10 @@ func BenchmarkSCacheEvictZipfParallel(b *testing.B) {
 		b.StopTimer()
 		b.ReportMetric(float64(totalMisses), "misses")
 	})
-
-	runtime.GC()
 }
 
 func BenchmarkHashiCacheEvictZipfParallel(b *testing.B) {
-	b.StopTimer()
-	missPenalty := getMissPenalty()
-
-	testWithSizes(b, func(b *testing.B, testSize int) {
+	testSweepZipf(b, func(b *testing.B, testSize int, missPenalty time.Duration, getZipf func() distMaker) {
 		b.StopTimer()
 		cache, err := lru.New(testSize)
 		if err != nil {
@@ -320,7 +305,7 @@ func BenchmarkHashiCacheEvictZipfParallel(b *testing.B) {
 		var totalMisses uint64
 		b.StartTimer()
 		b.RunParallel(func(pb *testing.PB) {
-			zipf := getZipf(testSize)
+			zipf := getZipf()
 
 			var misses uint64
 			for pb.Next() {
@@ -341,8 +326,147 @@ func BenchmarkHashiCacheEvictZipfParallel(b *testing.B) {
 		b.StopTimer()
 		b.ReportMetric(float64(totalMisses), "misses")
 	})
+}
 
-	runtime.GC()
+// uniform (unrealistic) distribution
+
+func BenchmarkFreeCacheEvictUniformParallel(b *testing.B) {
+	testSweepUniform(b, func(b *testing.B, testSize int, missPenalty time.Duration, getDist func() distMaker) {
+		cache := freecache.NewCache(testSize * maxEntrySize)
+		for i := 0; i < testSize; i++ {
+			cache.Set([]byte(key(i)), value(), 0)
+		}
+
+		var misses uint64
+		b.StartTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			zipf := getDist()
+
+			var missed uint64
+			for pb.Next() {
+				k := []byte(key(int(zipf.Uint64())))
+				v, _ := cache.Get(k)
+				if v == nil {
+					cache.Set(k, value(), 0)
+					missed = missed + 1
+
+					if missPenalty > 0 {
+						time.Sleep(missPenalty)
+					}
+				}
+			}
+
+			atomic.AddUint64(&misses, missed)
+		})
+
+		b.StopTimer()
+		b.ReportMetric(float64(misses), "misses")
+	})
+}
+
+func BenchmarkBigCacheEvictUniformParallel(b *testing.B) {
+	testSweepUniform(b, func(b *testing.B, testSize int, missPenalty time.Duration, getDist func() distMaker) {
+		cache := initBigCache(testSize)
+		for i := 0; i < testSize; i++ {
+			cache.Set(key(i), value())
+		}
+
+		var misses uint64
+		b.StartTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			zipf := getDist()
+
+			var missed uint64
+			for pb.Next() {
+				k := key(int(zipf.Uint64()))
+				_, e := cache.Get(k)
+				if e != nil {
+					cache.Set(k, value())
+					missed++
+
+					if missPenalty > 0 {
+						time.Sleep(missPenalty)
+					}
+				}
+			}
+
+			atomic.AddUint64(&misses, missed)
+		})
+
+		b.StopTimer()
+		b.ReportMetric(float64(misses), "misses")
+	})
+}
+
+func BenchmarkSCacheEvictUniformParallel(b *testing.B) {
+	testSweepUniform(b, func(b *testing.B, testSize int, missPenalty time.Duration, getDist func() distMaker) {
+		cache := initSCache(testSize)
+		for i := 0; i < testSize; i++ {
+			cache.Set(key(i), value())
+		}
+
+		var totalMisses uint64
+		b.StartTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			zipf := getDist()
+
+			var misses uint64
+			for pb.Next() {
+				k := key(int(zipf.Uint64()))
+				_, e := cache.Get(k)
+				if e != nil {
+					cache.Set(k, value())
+					misses = misses + 1
+					if missPenalty > 0 {
+						time.Sleep(missPenalty)
+					}
+				}
+			}
+
+			atomic.AddUint64(&totalMisses, misses)
+		})
+
+		b.StopTimer()
+		b.ReportMetric(float64(totalMisses), "misses")
+	})
+}
+
+func BenchmarkHashiCacheEvictUniformParallel(b *testing.B) {
+	testSweepUniform(b, func(b *testing.B, testSize int, missPenalty time.Duration, getDist func() distMaker) {
+		b.StopTimer()
+		cache, err := lru.New(testSize)
+		if err != nil {
+			b.Errorf("%s", err)
+		}
+
+		for i := 0; i < testSize; i++ {
+			cache.Add(key(i), value())
+		}
+
+		var totalMisses uint64
+		b.StartTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			zipf := getDist()
+
+			var misses uint64
+			for pb.Next() {
+				k := key(int(zipf.Uint64()))
+				v, _ := cache.Get(k)
+				if v == nil {
+					cache.Add(k, value())
+					misses = misses + 1
+					if missPenalty > 0 {
+						time.Sleep(missPenalty)
+					}
+				}
+			}
+
+			atomic.AddUint64(&totalMisses, misses)
+		})
+
+		b.StopTimer()
+		b.ReportMetric(float64(totalMisses), "misses")
+	})
 }
 
 // util functions
@@ -365,7 +489,7 @@ func getEnvFloat64(varName string, defaultVal float64) float64 {
 	return v
 }
 
-func testWithSizes(b *testing.B, f func(b *testing.B, testSize int)) {
+func getEnvCacheSizes() []int {
 	multFactor := getEnvFloat64("TEST_SIZE_FACTOR", 1.0)
 
 	multiSize := os.Getenv("MULTI_SIZES")
@@ -376,6 +500,12 @@ func testWithSizes(b *testing.B, f func(b *testing.B, testSize int)) {
 		testSizes = []int{int(1000000 * multFactor)}
 	}
 
+	return testSizes
+}
+
+func testWithSizes(b *testing.B, f func(b *testing.B, testSize int)) {
+	testSizes := getEnvCacheSizes()
+
 	for _, testSize := range testSizes {
 		b.Run(fmt.Sprintf("%d", testSize), func(b *testing.B) {
 			f(b, testSize)
@@ -383,18 +513,130 @@ func testWithSizes(b *testing.B, f func(b *testing.B, testSize int)) {
 	}
 }
 
+type distMaker interface {
+	Uint64() uint64
+}
+
+type distFactory func(cs int, sf float64) distMaker
+
+type sweepTest func(b *testing.B, cs int, mp time.Duration, df func() distMaker)
+
+func testSweep(b *testing.B, fsg distFactory, f sweepTest) {
+	missPenalty := getMissPenalty()
+
+	cacheSizes := getEnvCacheSizes()
+
+	sweepDistStr := os.Getenv("SWEEP_DIST")
+	sweepDist := sweepDistStr != ""
+	var distFactors []float64
+	if sweepDist {
+		err := json.Unmarshal([]byte(sweepDistStr), &distFactors)
+		if err != nil {
+			distFactors = []float64{0.99, 1.0, 1.01, 1.05, 1.1, 1.5, 2.0}
+		}
+	} else {
+		zipfFactor := getEnvFloat64("ZIPF_FACTOR", 2.0)
+		distFactors = []float64{zipfFactor}
+	}
+
+	var wholes, fp int
+	for _, distFactor := range distFactors {
+		rounded := math.Round(distFactor)
+		wholeDigits := len(fmt.Sprintf("%0.0f", rounded))
+		if wholeDigits > wholes {
+			wholes = wholeDigits
+		}
+
+		maxPrinted := fmt.Sprintf("%0.15f", distFactor-rounded)
+		for i := len(maxPrinted) - 1; i >= 0; i-- {
+			if maxPrinted[i] != '0' {
+				if fp < i-1 {
+					fp = i - 1
+				}
+
+				break
+			}
+		}
+	}
+
+	floatFormat := "%d-%0" + fmt.Sprintf("%d", wholes+fp+1) + "." + fmt.Sprintf("%d", fp) + "f"
+
+	for _, cacheSize := range cacheSizes {
+		for _, distFactor := range distFactors {
+			var benchName string
+			if sweepDist {
+				benchName = fmt.Sprintf(floatFormat, cacheSize, distFactor)
+			} else {
+				benchName = fmt.Sprintf("%d", cacheSize)
+			}
+
+			b.Run(benchName, func(b *testing.B) {
+				getDistMaker := func() distMaker {
+					return fsg(cacheSize, distFactor)
+				}
+
+				f(b, cacheSize, missPenalty, getDistMaker)
+			})
+		}
+	}
+}
+
+type uniformDist struct {
+	r   *rand.Rand
+	max int64
+}
+
+func (u *uniformDist) Uint64() uint64 {
+	return uint64(u.r.Int63n(u.max))
+}
+
+func testSweepUniform(b *testing.B, sweepTester sweepTest) {
+	b.StopTimer()
+
+	g := func(testSize int, f float64) distMaker {
+		src := rand.NewSource(time.Now().Unix())
+		randObj := rand.New(src)
+		return &uniformDist{
+			r:   randObj,
+			max: int64(math.Round(float64(testSize) * f)),
+		}
+	}
+
+	testSweep(b, g, sweepTester)
+
+	runtime.GC()
+}
+
+func testSweepZipf(b *testing.B, sweepTester sweepTest) {
+	b.StopTimer()
+
+	zipfS := getEnvFloat64("ZIPF_S", 1.01)
+	zipfV := getEnvFloat64("ZIPF_V", 1.0)
+
+	zipfGen := func(testSize int, zipfFactor float64) distMaker {
+		src := rand.NewSource(time.Now().Unix())
+		randObj := rand.New(src)
+
+		return rand.NewZipf(randObj, zipfS, zipfV, uint64(math.Round(float64(testSize)*zipfFactor)))
+	}
+
+	testSweep(b, zipfGen, sweepTester)
+
+	runtime.GC()
+}
+
 func key(i int) string {
-	// generates a 16 byte key
+	// generates a 16 (4+12) byte key
 	return fmt.Sprintf("key-%012d", i)
 }
 
 func parallelKey(threadID int, counter int) string {
-	// generates a 17 byte key with parallel support, used avoid collision
+	// generates a 17 (4+4+1+8) byte key with parallel support, used avoid collision
 	return fmt.Sprintf("key-%04d-%08d", threadID, counter)
 }
 
 func value() []byte {
-	// allocates emptye byte space
+	// allocates empty byte space
 	return make([]byte, 100)
 }
 
@@ -403,29 +645,15 @@ func getMissPenalty() time.Duration {
 	return time.Duration(v) * time.Millisecond
 }
 
-// rand helpers
-
-func getZipf(testSize int) *rand.Zipf {
-	src := rand.NewSource(time.Now().Unix())
-	randObj := rand.New(src)
-
-	zipfS := getEnvFloat64("ZIPF_S", 1.01)
-	zipfV := getEnvFloat64("ZIPF_V", 1.0)
-	zipfFactor := getEnvFloat64("ZIPF_FACTOR", 2.0)
-
-	return rand.NewZipf(randObj, zipfS, zipfV, uint64(math.Round(float64(testSize)*zipfFactor)))
-}
-
 // cache helpers
 
 func initSCache(entries int) *scache.Cache {
 	// since SCache allocates 2x buffer, divide max entries by 2
 	// https://github.com/viant/scache/blob/master/config.go#L33
 	entriesDiv := getEnvFloat64("SCACHE_ENTRIES_DIV", 2)
-
 	cache, _ := scache.New(&scache.Config{
 		Shards:     defaultShards,
-		MaxEntries: int(float64(entries) / entriesDiv),
+		MaxEntries: int(math.Round(float64(entries) / entriesDiv)),
 		EntrySize:  maxEntrySize,
 	})
 
