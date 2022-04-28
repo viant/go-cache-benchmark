@@ -188,7 +188,7 @@ func BenchmarkSCacheGetParallel(b *testing.B) {
 
 // parallel Zipf + eviction
 
-func BenchmarkFreeCacheZipfParallel(b *testing.B) {
+func BenchmarkFreeCacheEvictZipfParallel(b *testing.B) {
 	b.StopTimer()
 	missPenalty := getMissPenalty()
 	testWithSizes(b, func(b *testing.B, testSize int) {
@@ -226,7 +226,7 @@ func BenchmarkFreeCacheZipfParallel(b *testing.B) {
 	runtime.GC()
 }
 
-func BenchmarkBigCacheZipfParallel(b *testing.B) {
+func BenchmarkBigCacheEvictZipfParallel(b *testing.B) {
 	b.StopTimer()
 	missPenalty := getMissPenalty()
 	testWithSizes(b, func(b *testing.B, testSize int) {
@@ -264,7 +264,7 @@ func BenchmarkBigCacheZipfParallel(b *testing.B) {
 	runtime.GC()
 }
 
-func BenchmarkSCacheZipfParallel(b *testing.B) {
+func BenchmarkSCacheEvictZipfParallel(b *testing.B) {
 	b.StopTimer()
 	missPenalty := getMissPenalty()
 
@@ -302,7 +302,7 @@ func BenchmarkSCacheZipfParallel(b *testing.B) {
 	runtime.GC()
 }
 
-func BenchmarkHashiCacheZipfParallel(b *testing.B) {
+func BenchmarkHashiCacheEvictZipfParallel(b *testing.B) {
 	b.StopTimer()
 	missPenalty := getMissPenalty()
 

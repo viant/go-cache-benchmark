@@ -73,32 +73,31 @@ cache size      : 6144 KB
 cpu cores       : 4
 cache_alignment : 64
 
-$ docker run --rm -it -v "$PWD":/w -w /w -e SINGLE_LOAD=y golang:1.15 go test -bench=. -benchmem -benchtime=5s .
+$ docker run --rm -it -v "$PWD":/w -w /w golang:1.15 go test -bench=. -benchmem -benchtime=10000000x ./
+go: downloading github.com/viant/scache v0.5.0
+go: downloading github.com/coocood/freecache v1.1.0
+go: downloading github.com/allegro/bigcache/v2 v2.1.3
+go: downloading github.com/hashicorp/golang-lru v0.5.4
+go: downloading github.com/cespare/xxhash v1.1.0
+go: downloading github.com/pkg/errors v0.9.1
 goos: linux
 goarch: amd64
 pkg: github.com/viant/go-cache-benchmark
-BenchmarkMapSet/1000000-4               13307522               476 ns/op             143 B/op          2 allocs/op
-BenchmarkFreeCacheSet/1000000-4          9099657               614 ns/op              59 B/op          1 allocs/op
-BenchmarkBigCacheSet/1000000-4           8694972               841 ns/op             469 B/op          2 allocs/op
-BenchmarkConcurrentMapSet/1000000-4      5665552               985 ns/op             226 B/op          6 allocs/op
-BenchmarkMapGet/1000000-4               15071960               427 ns/op              23 B/op          1 allocs/op
-BenchmarkFreeCacheGet/1000000-4          8106286               788 ns/op             135 B/op          2 allocs/op
-BenchmarkBigCacheGet/1000000-4           7949700               821 ns/op             151 B/op          3 allocs/op
-BenchmarkConcurrentMapGet/1000000-4     11390961               494 ns/op              23 B/op          1 allocs/op
-BenchmarkFreeCacheSetParallel/1000000-4                 15078682               459 ns/op              73 B/op          2 allocs/op
-BenchmarkBigCacheSetParallel/1000000-4                  18148712              2091 ns/op             494 B/op          2 allocs/op
-BenchmarkConcurrentMapSetParallel/1000000-4              1788368              5427 ns/op             386 B/op          9 allocs/op
-BenchmarkFreeCacheGetParallel/1000000-4                 18953143               309 ns/op             135 B/op          2 allocs/op
-BenchmarkBigCacheGetParallel/1000000-4                  34834102               187 ns/op             151 B/op          3 allocs/op
-BenchmarkSCacheGetParallel/1000000-4                    37698138               186 ns/op              23 B/op          1 allocs/op
-BenchmarkConcurrentMapGetParallel/1000000-4             29622260               225 ns/op              23 B/op          1 allocs/op
-BenchmarkFreeCacheZipfParallel/1000000-4                15800661               378 ns/op            156670 misses            154 B/op          2 allocs/op
-BenchmarkBigCacheZipfParallel/1000000-4                 24453490               217 ns/op            232891 misses            160 B/op          3 allocs/op
-BenchmarkSCacheZipfParallel/1000000-4                   36476641               165 ns/op           1198419 misses             35 B/op          1 allocs/op
-BenchmarkHashiCacheZipfParallel/1000000-4                7619289               748 ns/op            152205 misses             41 B/op          2 allocs/op
+BenchmarkFreeCacheSet/1000000-4                 10000000               639 ns/op              56 B/op          1 allocs/op
+BenchmarkBigCacheSet/1000000-4                  10000000               818 ns/op              66 B/op          2 allocs/op
+BenchmarkFreeCacheGet/1000000-4                 10000000               728 ns/op             135 B/op          2 allocs/op
+BenchmarkBigCacheGet/1000000-4                  10000000               738 ns/op             151 B/op          3 allocs/op
+BenchmarkFreeCacheSetParallel/1000000-4         10000000               458 ns/op              87 B/op          2 allocs/op
+BenchmarkBigCacheSetParallel/1000000-4          10000000               376 ns/op              95 B/op          3 allocs/op
+BenchmarkFreeCacheGetParallel/1000000-4         10000000               298 ns/op             135 B/op          2 allocs/op
+BenchmarkBigCacheGetParallel/1000000-4          10000000               180 ns/op             151 B/op          3 allocs/op
+BenchmarkSCacheGetParallel/1000000-4            10000000               155 ns/op              23 B/op          1 allocs/op
+BenchmarkFreeCacheEvictZipfParallel/1000000-4           10000000               397 ns/op            102669 misses            166 B/op          2 allocs/op
+BenchmarkBigCacheEvictZipfParallel/1000000-4            10000000               260 ns/op            104361 misses            178 B/op          3 allocs/op
+BenchmarkSCacheEvictZipfParallel/1000000-4              10000000               197 ns/op            437547 misses             67 B/op          1 allocs/op
+BenchmarkHashiCacheEvictZipfParallel/1000000-4          10000000               786 ns/op            201540 misses             41 B/op          2 allocs/op
 PASS
-ok      github.com/viant/go-cache-benchmark     251.860s
-
+ok      github.com/viant/go-cache-benchmark     72.104s
 ```
 
 # Running tests
@@ -107,11 +106,43 @@ ok      github.com/viant/go-cache-benchmark     251.860s
 
 Requires at least Go 1.15
 
-`go test -bench=. -benchmen -benchtime=4s .`
+Generally recommended to use `-benchtime=Xx` instead of `-benchtime=Xs`, especially to see effects on hit rate.
+
+*Run all benchmarks*
+
+`go test -bench=. -benchmem -benchtime=10000000x .`
+
+*Run eviction strategy benchmarks*
+
+`go test -bench=Evict -benchmem -benchtime=10000000x .`
+
+*Extend range of possible inputs*
+
+`ZIPF_FACTOR=8 go test -bench=Evict -benchmem -benchtime=10000000x .`
+
+```
+$ docker run --rm -it -v "$PWD":/w -w /w -e ZIPF_FACTOR=8 golang:1.15 go test -bench=Evict -benchmem -benchtime=10000000x ./
+go: downloading github.com/viant/scache v0.5.0
+go: downloading github.com/hashicorp/golang-lru v0.5.4
+go: downloading github.com/coocood/freecache v1.1.0
+go: downloading github.com/allegro/bigcache/v2 v2.1.3
+go: downloading github.com/pkg/errors v0.9.1
+go: downloading github.com/cespare/xxhash v1.1.0
+goos: linux
+goarch: amd64
+pkg: github.com/viant/go-cache-benchmark
+BenchmarkFreeCacheEvictZipfParallel/1000000-4           10000000               416 ns/op            291498 misses            168 B/op          2 allocs/op
+BenchmarkBigCacheEvictZipfParallel/1000000-4            10000000               267 ns/op            296929 misses            176 B/op          3 allocs/op
+BenchmarkSCacheEvictZipfParallel/1000000-4              10000000               204 ns/op            691164 misses             71 B/op          1 allocs/op
+BenchmarkHashiCacheEvictZipfParallel/1000000-4          10000000               783 ns/op            450316 misses             47 B/op          2 allocs/op
+PASS
+ok      github.com/viant/go-cache-benchmark     21.911s
+```
+
 
 ## Using Docker
 
-`docker run --rm -it -v "$PWD":/w -w /w golang:1.15 go test -bench=. -benchmem -benchtime=4s .`
+`docker run --rm -it -v "$PWD":/w -w /w golang:1.15 go test -bench=. -benchmem -benchtime=10000000x .`
 
 Note that you can use whatever version of Go (after 1.5 for best results).
 
@@ -125,13 +156,15 @@ Refer to [standard library documentation](https://pkg.go.dev/cmd/go/internal/tes
 *This section may change if there's a better way to control tests.*
 
 * `TEST_SIZE_FACTOR` - defaults to `1`. Multiplies the number of elements stored.
-* `SINGLE_LOAD` - set to non-empty string to only benchmark the run with 1,000,000 elements (multiplier still applied).
+* `MULTI_SIZES` - set to non-empty string to only benchmark the run with 10,000,000 elements stored, then 1,000,000, then lastly 100,000 elements (multiplier still applied).
 
 See [standard library `rand`'s `Zipf` type](https://pkg.go.dev/math/rand#NewZipf)
 
 * `ZIPF_FACTOR` - defaults to `2`. Multiplies the maximum of range of the Zipf distribution, used to calculate `imax`.
 * `ZIPF_S` - defaults to `1.01`. Sets curvature of Zipf probability (increases hit likelihood dramatically), set as `s`.
 * `ZIPF_V` - defaults to `1`. Sets initial offset for Zipf probability, set as `v`.
+
+* `SCACHE_ENTRIES_DIV` - defaults to `2`. Sets the number of entries that are used in `scache` configuration initialization, since [`scache` allocates twice the amount of memory than expected](https://github.com/viant/scache/blob/master/config.go#L33). Set to `1` to use twice the amount of memory than other caches, the resulting number of entries supported by the cache will be `expectedEntries / SCACHE_ENTRIES_DIV`. To get a specific "extended" size, divide 2 by the desired additional size. For example, to allocate 10% more memory for `scache`, use `SCACHE_ENTRIES_DIV` of `2 / 1.1` or `1.8182`.
 
 * `MISS_PENALTY` - defaults to `0`. Sets milliseconds of wait in the case of a cache miss for benchmarks that test eviction.
 
