@@ -19,8 +19,8 @@ import (
 )
 
 func testLPad(t *testing.T, r int64, l int) {
-	fmtd := fmt.Sprintf("%0" + fmt.Sprintf("%d", l) + "d", r)
-	if LPad(r, l)  != fmtd {
+	fmtd := fmt.Sprintf("%0"+fmt.Sprintf("%d", l)+"d", r)
+	if LPad(r, l) != fmtd {
 		t.Errorf("\"%s\" != \"%s\"", LPad(r, l), fmtd)
 	}
 }
@@ -35,7 +35,6 @@ func BenchmarkLPad(b *testing.B) {
 		_ = LPad(123456789, 10)
 	}
 }
-
 
 func BenchmarkFmt(b *testing.B) {
 	for i := 0; i < b.N; i++ {

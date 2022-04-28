@@ -18,7 +18,7 @@ import (
 )
 
 func LPad(i int64, l int) string {
-	m := int64(math.Pow(10, float64(l - 1)))
+	m := int64(math.Pow(10, float64(l-1)))
 	bs := make([]byte, l, l)
 	ri := int64(i)
 	for p := 0; p < l; p++ {
