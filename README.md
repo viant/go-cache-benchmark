@@ -15,8 +15,6 @@ Currently compares the following available libraries / implementations:
 1. [FreeCache](https://github.com/coocood/freecache)
 2. [BigCache](https://github.com/allegro/bigcache)
 3. [SCache](https://github.com/viant/scache)
-4. Non-evicting native `map` 
-5. Non-evicting standard library `sync.Map`
 6. [`golang-lru`](https://github.com/hashicorp/golang-lru) 
 
 # Descriptions of benchmarks

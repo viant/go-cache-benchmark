@@ -20,7 +20,6 @@ import (
 	"os"
 	"runtime"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -37,15 +36,6 @@ const defaultShards = 256
 // Trivial tests
 
 // serial Set
-
-func BenchmarkMapSet(b *testing.B) {
-	testWithSizes(b, func(b *testing.B, testSize int) {
-		m := makeMap(testSize)
-		for i := 0; i < b.N; i++ {
-			m[key(i%testSize)] = value()
-		}
-	})
-}
 
 func BenchmarkFreeCacheSet(b *testing.B) {
 	testWithSizes(b, func(b *testing.B, testSize int) {
@@ -65,35 +55,7 @@ func BenchmarkBigCacheSet(b *testing.B) {
 	})
 }
 
-func BenchmarkConcurrentMapSet(b *testing.B) {
-	testWithSizes(b, func(b *testing.B, testSize int) {
-		var m sync.Map
-		for i := 0; i < b.N; i++ {
-			m.Store(key(i%testSize), value())
-		}
-	})
-}
-
 // serial Get
-
-func BenchmarkMapGet(b *testing.B) {
-	testWithSizes(b, func(b *testing.B, testSize int) {
-		b.StopTimer()
-
-		m := makeMap(testSize)
-		for i := 0; i < testSize; i++ {
-			m[key(i)] = value()
-		}
-
-		var ignored int = 0
-		b.StartTimer()
-		for i := 0; i < b.N; i++ {
-			if m[key(i%testSize)] != nil {
-				ignored++
-			}
-		}
-	})
-}
 
 func BenchmarkFreeCacheGet(b *testing.B) {
 	testWithSizes(b, func(b *testing.B, testSize int) {
@@ -126,26 +88,6 @@ func BenchmarkBigCacheGet(b *testing.B) {
 	})
 }
 
-func BenchmarkConcurrentMapGet(b *testing.B) {
-	testWithSizes(b, func(b *testing.B, testSize int) {
-		b.StopTimer()
-
-		var m sync.Map
-		for i := 0; i < testSize; i++ {
-			m.Store(key(i), value())
-		}
-
-		ignored := 0
-		b.StartTimer()
-		for i := 0; i < b.N; i++ {
-			_, ok := m.Load(key(i % testSize))
-			if ok {
-				ignored++
-			}
-		}
-	})
-}
-
 // Parallel set
 
 func BenchmarkFreeCacheSetParallel(b *testing.B) {
@@ -174,21 +116,6 @@ func BenchmarkBigCacheSetParallel(b *testing.B) {
 			counter := 0
 			for pb.Next() {
 				cache.Set(parallelKey(id, counter%testSize), value())
-				counter = counter + 1
-			}
-		})
-	})
-}
-
-func BenchmarkConcurrentMapSetParallel(b *testing.B) {
-	testWithSizes(b, func(b *testing.B, testSize int) {
-		var m sync.Map
-
-		b.RunParallel(func(pb *testing.PB) {
-			id := rand.Intn(1000)
-			counter := 0
-			for pb.Next() {
-				m.Store(parallelKey(id, counter%testSize), value())
 				counter = counter + 1
 			}
 		})
@@ -250,31 +177,6 @@ func BenchmarkSCacheGetParallel(b *testing.B) {
 			for pb.Next() {
 				v, _ := cache.Get(key(counter % testSize))
 				if v != nil {
-					hitCount++
-				}
-
-				counter = counter + 1
-			}
-		})
-	})
-}
-
-func BenchmarkConcurrentMapGetParallel(b *testing.B) {
-	testWithSizes(b, func(b *testing.B, testSize int) {
-		b.StopTimer()
-
-		var m sync.Map
-		for i := 0; i < testSize; i++ {
-			m.Store(key(i), value())
-		}
-
-		b.StartTimer()
-		hitCount := 0
-		b.RunParallel(func(pb *testing.PB) {
-			counter := 0
-			for pb.Next() {
-				_, ok := m.Load(key(counter % testSize))
-				if ok {
 					hitCount++
 				}
 
@@ -466,9 +368,9 @@ func getEnvFloat64(varName string, defaultVal float64) float64 {
 func testWithSizes(b *testing.B, f func(b *testing.B, testSize int)) {
 	multFactor := getEnvFloat64("TEST_SIZE_FACTOR", 1.0)
 
-	singleOnly := os.Getenv("SINGLE_LOAD")
+	multiSize := os.Getenv("MULTI_SIZES")
 	var testSizes []int
-	if singleOnly == "" {
+	if multiSize != "" {
 		testSizes = []int{int(10000000 * multFactor), int(1000000 * multFactor), int(100000 * multFactor)}
 	} else {
 		testSizes = []int{int(1000000 * multFactor)}
@@ -516,16 +418,14 @@ func getZipf(testSize int) *rand.Zipf {
 
 // cache helpers
 
-func makeMap(size int) map[string][]byte {
-	return make(map[string][]byte, size)
-}
-
 func initSCache(entries int) *scache.Cache {
 	// since SCache allocates 2x buffer, divide max entries by 2
 	// https://github.com/viant/scache/blob/master/config.go#L33
+	entriesDiv := getEnvFloat64("SCACHE_ENTRIES_DIV", 2)
+
 	cache, _ := scache.New(&scache.Config{
 		Shards:     defaultShards,
-		MaxEntries: entries / 2,
+		MaxEntries: int(float64(entries) / entriesDiv),
 		EntrySize:  maxEntrySize,
 	})
 
