@@ -342,7 +342,7 @@ func BenchmarkBigCacheZipfParallel(b *testing.B) {
 			for pb.Next() {
 				k := key(int(zipf.Uint64()))
 				_, e := cache.Get(k)
-				if e == nil {
+				if e != nil {
 					cache.Set(k, value())
 					missed++
 
@@ -538,6 +538,7 @@ func initBigCache(entriesInWindow int) *bigcache.BigCache {
 		LifeWindow:         10 * time.Minute,
 		MaxEntriesInWindow: entriesInWindow,
 		MaxEntrySize:       maxEntrySize,
+		HardMaxCacheSize:   maxEntrySize * entriesInWindow / 1024 / 1024,
 		Verbose:            false,
 	})
 
