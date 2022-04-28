@@ -75,7 +75,7 @@ cache size      : 6144 KB
 cpu cores       : 4
 cache_alignment : 64
 
-$ docker run --rm -it -v "$PWD":/w -w /w -e SINGLE_LOAD=y -e golang:1.15 go test -bench=. -benchmem -benchtime=5s .
+$ docker run --rm -it -v "$PWD":/w -w /w -e SINGLE_LOAD=y golang:1.15 go test -bench=. -benchmem -benchtime=5s .
 goos: linux
 goarch: amd64
 pkg: github.com/viant/go-cache-benchmark
