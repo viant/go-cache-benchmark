@@ -665,9 +665,10 @@ func initSCache(entries int) *scache.Cache {
 	// since SCache allocates 2x buffer, divide max entries by 2
 	// https://github.com/viant/scache/blob/master/config.go#L33
 	entriesDiv := getEnvFloat64("SCACHE_ENTRIES_DIV", 2)
+	entriesBuffer := getEnvFloat64("SCACHE_ENTRIES_BUFFER", 1)
 	cache, _ := scache.New(&scache.Config{
 		Shards:     defaultShards,
-		MaxEntries: int(math.Round(float64(entries) / entriesDiv)),
+		MaxEntries: int(math.Round(float64(entries) * entriesBuffer / entriesDiv)),
 		EntrySize:  maxEntrySize,
 	})
 
