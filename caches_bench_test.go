@@ -211,25 +211,111 @@ func BenchmarkSCacheGetParallel(b *testing.B) {
 	})
 }
 
+// refactor
+
+type Benchmarked interface {
+	Set(i int)
+	Get(i int) bool
+}
+
+// freecache
+
+type eFreecache struct {
+	*freecache.Cache
+}
+
+func (c *eFreecache) Set(i int) {
+	c.Cache.Set([]byte(key(i)), value(), 0)
+}
+
+func (c *eFreecache) Get(i int) bool {
+	_, err := c.Cache.Get([]byte(key(i)))
+	return err != nil
+}
+
+// bigcache
+
+type eBigCache struct {
+	*bigcache.BigCache
+}
+
+func (c *eBigCache) Set(i int) {
+	c.BigCache.Set(key(i), value())
+}
+
+func (c *eBigCache) Get(i int) bool {
+	_, err := c.BigCache.Get(key(i))
+	return err != nil
+}
+
+// scache
+
+type eSCache struct {
+	*scache.Cache
+}
+
+func (c *eSCache) Set(i int) {
+	c.Cache.Set(key(i), value())
+}
+
+func (c *eSCache) Get(i int) bool {
+	_, err := c.Cache.Get(key(i))
+	return err != nil
+}
+
+// lru (HashiCache)
+
+type eHashiCache struct {
+	*lru.Cache
+}
+
+func (c *eHashiCache) Set(i int) {
+	c.Cache.Add(key(i), value())
+}
+
+func (c *eHashiCache) Get(i int) bool {
+	_, ok := c.Cache.Get(key(i))
+	return !ok
+}
+
 // parallel Zipf + eviction
 
 func BenchmarkFreeCacheEvictZipfParallel(b *testing.B) {
-	testSweepZipf(b, func(b *testing.B, testSize int, missPenalty time.Duration, getZipf func() distMaker) {
+	testSweepZipf(b, func(b *testing.B, s int, mp time.Duration, g func() distMaker) {
+		fci := freecache.NewCache(s * maxEntrySize)
+		c := eFreecache{fci}
+		benchCacheEvict(b, s, mp, g, &c)
+	})
+}
+
+/* this is to compare the interfaced version with the direct calls, difference seems to be noise
+// n=10000000, cpu=4
+// new: 401, 407, 364, 375, 371, 393, 373, 369, 357, 367
+// old: 373, 371, 381, 364, 378, 372, 364, 380, 354, 388
+func BenchmarkOldFreeCacheEvictZipfParallel(b *testing.B) {
+	testSweepZipf(b, func(b *testing.B, testSize int, missPenalty time.Duration, getDist func() distMaker) {
 		cache := freecache.NewCache(testSize * maxEntrySize)
 		for i := 0; i < testSize; i++ {
 			cache.Set([]byte(key(i)), value(), 0)
 		}
 
-		runParallel(b, func(pb *testing.PB) uint64 {
-			zipf := getZipf()
+		runEvictParallel(b, func(pb *testing.PB, em *evictMeta) {
+			dist := getDist()
 
-			var missed uint64
+			var misses, inCache, exCache uint64
 			for pb.Next() {
-				k := []byte(key(int(zipf.Uint64())))
+				uv := dist.Uint64()
+				if uv > uint64(testSize) {
+					exCache++
+				} else {
+					inCache++
+				}
+
+				k := []byte(key(int(uv)))
 				v, _ := cache.Get(k)
 				if v == nil {
 					cache.Set(k, value(), 0)
-					missed = missed + 1
+					misses++
 
 					if missPenalty > 0 {
 						time.Sleep(missPenalty)
@@ -237,97 +323,39 @@ func BenchmarkFreeCacheEvictZipfParallel(b *testing.B) {
 				}
 			}
 
-			return missed
+			em.misses = misses
+			em.inCache = inCache
+			em.exCache = exCache
 		})
 	})
 }
+//*/
 
 func BenchmarkBigCacheEvictZipfParallel(b *testing.B) {
-	testSweepZipf(b, func(b *testing.B, testSize int, missPenalty time.Duration, getZipf func() distMaker) {
+	testSweepZipf(b, func(b *testing.B, testSize int, missPenalty time.Duration, getDist func() distMaker) {
 		cache := initBigCache(testSize)
-		for i := 0; i < testSize; i++ {
-			cache.Set(key(i), value())
-		}
-
-		runParallel(b, func(pb *testing.PB) uint64 {
-			zipf := getZipf()
-
-			var missed uint64
-			for pb.Next() {
-				k := key(int(zipf.Uint64()))
-				_, e := cache.Get(k)
-				if e != nil {
-					cache.Set(k, value())
-					missed++
-
-					if missPenalty > 0 {
-						time.Sleep(missPenalty)
-					}
-				}
-			}
-
-			return missed
-		})
+		c := eBigCache{cache}
+		benchCacheEvict(b, testSize, missPenalty, getDist, &c)
 	})
 }
 
 func BenchmarkSCacheEvictZipfParallel(b *testing.B) {
-	testSweepZipf(b, func(b *testing.B, testSize int, missPenalty time.Duration, getZipf func() distMaker) {
+	testSweepZipf(b, func(b *testing.B, testSize int, missPenalty time.Duration, getDist func() distMaker) {
 		cache := initSCache(testSize)
-		for i := 0; i < testSize; i++ {
-			cache.Set(key(i), value())
-		}
-
-		runParallel(b, func(pb *testing.PB) uint64 {
-			zipf := getZipf()
-
-			var misses uint64
-			for pb.Next() {
-				k := key(int(zipf.Uint64()))
-				_, e := cache.Get(k)
-				if e != nil {
-					cache.Set(k, value())
-					misses = misses + 1
-					if missPenalty > 0 {
-						time.Sleep(missPenalty)
-					}
-				}
-			}
-
-			return misses
-		})
+		c := eSCache{cache}
+		benchCacheEvict(b, testSize, missPenalty, getDist, &c)
 	})
 }
 
 func BenchmarkHashiCacheEvictZipfParallel(b *testing.B) {
-	testSweepZipf(b, func(b *testing.B, testSize int, missPenalty time.Duration, getZipf func() distMaker) {
+	testSweepZipf(b, func(b *testing.B, testSize int, missPenalty time.Duration, getDist func() distMaker) {
 		cache, err := lru.New(testSize)
 		if err != nil {
 			b.Errorf("%s", err)
 		}
 
-		for i := 0; i < testSize; i++ {
-			cache.Add(key(i), value())
-		}
-
-		runParallel(b, func(pb *testing.PB) uint64 {
-			zipf := getZipf()
-
-			var misses uint64
-			for pb.Next() {
-				k := key(int(zipf.Uint64()))
-				v, _ := cache.Get(k)
-				if v == nil {
-					cache.Add(k, value())
-					misses = misses + 1
-					if missPenalty > 0 {
-						time.Sleep(missPenalty)
-					}
-				}
-			}
-
-			return misses
-		})
+		c := eHashiCache{cache}
+		benchCacheEvict(b, testSize, missPenalty, getDist, &c)
 	})
 }
 
@@ -335,135 +363,95 @@ func BenchmarkHashiCacheEvictZipfParallel(b *testing.B) {
 
 func BenchmarkFreeCacheEvictUniformParallel(b *testing.B) {
 	testSweepUniform(b, func(b *testing.B, testSize int, missPenalty time.Duration, getDist func() distMaker) {
-		cache := freecache.NewCache(testSize * maxEntrySize)
-		for i := 0; i < testSize; i++ {
-			cache.Set([]byte(key(i)), value(), 0)
-		}
-
-		runParallel(b, func(pb *testing.PB) uint64 {
-			zipf := getDist()
-
-			var missed uint64
-			for pb.Next() {
-				k := []byte(key(int(zipf.Uint64())))
-				v, _ := cache.Get(k)
-				if v == nil {
-					cache.Set(k, value(), 0)
-					missed = missed + 1
-
-					if missPenalty > 0 {
-						time.Sleep(missPenalty)
-					}
-				}
-			}
-
-			return missed
-		})
+		fci := freecache.NewCache(testSize * maxEntrySize)
+		c := eFreecache{fci}
+		benchCacheEvict(b, testSize, missPenalty, getDist, &c)
 	})
 }
 
 func BenchmarkBigCacheEvictUniformParallel(b *testing.B) {
 	testSweepUniform(b, func(b *testing.B, testSize int, missPenalty time.Duration, getDist func() distMaker) {
 		cache := initBigCache(testSize)
-		for i := 0; i < testSize; i++ {
-			cache.Set(key(i), value())
-		}
-
-		runParallel(b, func(pb *testing.PB) uint64 {
-			zipf := getDist()
-
-			var missed uint64
-			for pb.Next() {
-				k := key(int(zipf.Uint64()))
-				_, e := cache.Get(k)
-				if e != nil {
-					cache.Set(k, value())
-					missed++
-
-					if missPenalty > 0 {
-						time.Sleep(missPenalty)
-					}
-				}
-			}
-
-			return missed
-		})
+		c := eBigCache{cache}
+		benchCacheEvict(b, testSize, missPenalty, getDist, &c)
 	})
 }
 
 func BenchmarkSCacheEvictUniformParallel(b *testing.B) {
 	testSweepUniform(b, func(b *testing.B, testSize int, missPenalty time.Duration, getDist func() distMaker) {
 		cache := initSCache(testSize)
-		for i := 0; i < testSize; i++ {
-			cache.Set(key(i), value())
-		}
-
-		runParallel(b, func(pb *testing.PB) uint64 {
-			zipf := getDist()
-
-			var misses uint64
-			for pb.Next() {
-				k := key(int(zipf.Uint64()))
-				_, e := cache.Get(k)
-				if e != nil {
-					cache.Set(k, value())
-					misses = misses + 1
-					if missPenalty > 0 {
-						time.Sleep(missPenalty)
-					}
-				}
-			}
-
-			return misses
-		})
+		c := eSCache{cache}
+		benchCacheEvict(b, testSize, missPenalty, getDist, &c)
 	})
 }
 
 func BenchmarkHashiCacheEvictUniformParallel(b *testing.B) {
 	testSweepUniform(b, func(b *testing.B, testSize int, missPenalty time.Duration, getDist func() distMaker) {
-		b.StopTimer()
 		cache, err := lru.New(testSize)
 		if err != nil {
 			b.Errorf("%s", err)
 		}
 
-		for i := 0; i < testSize; i++ {
-			cache.Add(key(i), value())
-		}
-
-		runParallel(b, func(pb *testing.PB) uint64 {
-			zipf := getDist()
-
-			var misses uint64
-			for pb.Next() {
-				k := key(int(zipf.Uint64()))
-				v, _ := cache.Get(k)
-				if v == nil {
-					cache.Add(k, value())
-					misses = misses + 1
-					if missPenalty > 0 {
-						time.Sleep(missPenalty)
-					}
-				}
-			}
-
-			return misses
-		})
+		c := eHashiCache{cache}
+		benchCacheEvict(b, testSize, missPenalty, getDist, &c)
 	})
 }
 
 // util functions
 
-func runParallel(b *testing.B, rpf func(pb *testing.PB) uint64) {
-	var totalMisses uint64
+type evictMeta struct {
+	misses uint64
+	// the distribution value is outside initial cache size
+	exCache uint64
+}
 
+func benchCacheEvict(b *testing.B, testSize int, missPenalty time.Duration, getDist func() distMaker, cache Benchmarked) {
+	for i := 0; i < testSize; i++ {
+		cache.Set(i)
+	}
+
+	uts := uint64(testSize)
+
+	runEvictParallel(b, func(pb *testing.PB, em *evictMeta) {
+		dist := getDist()
+
+		var misses, exCache uint64
+		for pb.Next() {
+			uv := dist.Uint64()
+			if uv >= uts {
+				exCache++
+			}
+
+			iv := int(uv)
+			missed := cache.Get(iv)
+			if missed {
+				cache.Set(iv)
+				misses++
+
+				if missPenalty > 0 {
+					time.Sleep(missPenalty)
+				}
+			}
+		}
+
+		em.misses = misses
+		em.exCache = exCache
+	})
+}
+
+func runEvictParallel(b *testing.B, rpf func(pb *testing.PB, em *evictMeta)) {
 	var startMem runtime.MemStats
 	runtime.ReadMemStats(&startMem)
 
+	var totalMeta evictMeta
+
 	b.StartTimer()
 	b.RunParallel(func(pb *testing.PB) {
-		misses := rpf(pb)
-		atomic.AddUint64(&totalMisses, misses)
+		var em evictMeta
+		rpf(pb, &em)
+
+		atomic.AddUint64(&totalMeta.misses, em.misses)
+		atomic.AddUint64(&totalMeta.exCache, em.exCache)
 	})
 	b.StopTimer()
 
@@ -471,7 +459,8 @@ func runParallel(b *testing.B, rpf func(pb *testing.PB) uint64) {
 	runtime.ReadMemStats(&endMem)
 	b.ReportMetric(float64(endMem.NumGC-startMem.NumGC), "gc")
 
-	b.ReportMetric(float64(totalMisses), "misses")
+	b.ReportMetric(float64(totalMeta.misses), "miss")
+	b.ReportMetric(float64(totalMeta.exCache), "expc")
 }
 
 func getEnvInt64(varName string, defaultVal int64) int64 {
@@ -604,7 +593,7 @@ func testSweepUniform(b *testing.B, sweepTester sweepTest) {
 	b.StopTimer()
 
 	g := func(testSize int, f float64) distMaker {
-		src := rand.NewSource(time.Now().Unix())
+		src := rand.NewSource(time.Now().UnixNano())
 		randObj := rand.New(src)
 		return &uniformDist{
 			r:   randObj,
@@ -624,7 +613,7 @@ func testSweepZipf(b *testing.B, sweepTester sweepTest) {
 	zipfV := getEnvFloat64("ZIPF_V", 1.0)
 
 	zipfGen := func(testSize int, zipfFactor float64) distMaker {
-		src := rand.NewSource(time.Now().Unix())
+		src := rand.NewSource(time.Now().UnixNano())
 		randObj := rand.New(src)
 
 		return rand.NewZipf(randObj, zipfS, zipfV, uint64(math.Round(float64(testSize)*zipfFactor)))
@@ -636,8 +625,8 @@ func testSweepZipf(b *testing.B, sweepTester sweepTest) {
 }
 
 func key(i int) string {
-	// generates a 16 (4+12) byte key
-	return fmt.Sprintf("key-%012d", i)
+	// generates a 36 (4+32) byte key
+	return fmt.Sprintf("key-%032d", i)
 }
 
 func parallelKey(threadID int, counter int) string {
@@ -646,7 +635,6 @@ func parallelKey(threadID int, counter int) string {
 }
 
 func value() []byte {
-	// allocates empty byte space
 	return make([]byte, 100)
 }
 
