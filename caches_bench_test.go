@@ -147,6 +147,22 @@ func BenchmarkBigCacheSetParallel(b *testing.B) {
 	})
 }
 
+func BenchmarkSCacheSetParallel(b *testing.B) {
+	testWithSizes(b, func(b *testing.B, testSize int) {
+		cache := initSCache(testSize)
+		rand.Seed(time.Now().Unix())
+
+		b.RunParallel(func(pb *testing.PB) {
+			id := rand.Intn(1000)
+			counter := 0
+			for pb.Next() {
+				cache.Set(parallelKey(id, counter%testSize), value())
+				counter = counter + 1
+			}
+		})
+	})
+}
+
 // Parallel get
 
 func BenchmarkFreeCacheGetParallel(b *testing.B) {
@@ -630,8 +646,8 @@ func key(i int) string {
 }
 
 func parallelKey(threadID int, counter int) string {
-	// generates a 17 (4+4+1+8) byte key with parallel support, used avoid collision
-	return fmt.Sprintf("key-%04d-%08d", threadID, counter)
+	// generates a 36 (4+4+1+27) byte key with parallel support, used avoid collision
+	return fmt.Sprintf("key-%04d-%027d", threadID, counter)
 }
 
 func value() []byte {

@@ -22,9 +22,8 @@ Currently compares the following available libraries / implementations:
 The benchmarks run, for each cache implementation, by creating a cache with a set maximum size which, by default, is 10M, will:
 
 1. Benchmark setting of values without eviction, in serial and parallel.
-2. Benchmark setting of values with maximum eviction, in parallel.
-3. Prepopulate and benchmark getting values without misses, in serial and parallel.
-4. Prepopulate and benchmark eviction policy using requests following a Zipf and uniform distribution, setting on cache miss, in parallel only.
+2. Prepopulate and benchmark getting values without misses, in serial and parallel.
+3. Prepopulate and benchmark eviction policy using requests following a Zipf and uniform distribution, setting on cache miss, in parallel only.
 
 # Observations
 
