@@ -74,34 +74,36 @@ cpu cores       : 4
 cache_alignment : 64
 
 $ docker run --rm -it -v "$PWD":/w -w /w golang:1.15 go test -bench=. -benchtime=10000000x .
-go: downloading github.com/coocood/freecache v1.1.0
-go: downloading github.com/hashicorp/golang-lru v0.5.4
 go: downloading github.com/viant/scache v0.5.0
+go: downloading github.com/hashicorp/golang-lru v0.5.4
 go: downloading github.com/allegro/bigcache/v2 v2.1.3
-go: downloading github.com/cespare/xxhash v1.1.0
+go: downloading github.com/coocood/freecache v1.1.0
 go: downloading github.com/pkg/errors v0.9.1
+go: downloading github.com/cespare/xxhash v1.1.0
 goos: linux
 goarch: amd64
 pkg: github.com/viant/go-cache-benchmark
-BenchmarkFreeCacheSet/1000000-4                 10000000               655 ns/op
-BenchmarkBigCacheSet/1000000-4                  10000000               818 ns/op
-BenchmarkFreeCacheGet/1000000-4                 10000000               748 ns/op
-BenchmarkBigCacheGet/1000000-4                  10000000               747 ns/op
-BenchmarkFreeCacheSetParallel/1000000-4         10000000               458 ns/op
-BenchmarkBigCacheSetParallel/1000000-4          10000000               369 ns/op
-BenchmarkFreeCacheGetParallel/1000000-4         10000000               276 ns/op
-BenchmarkBigCacheGetParallel/1000000-4          10000000               174 ns/op
-BenchmarkSCacheGetParallel/1000000-4            10000000               154 ns/op
-BenchmarkFreeCacheEvictZipfParallel/1000000-4           10000000               389 ns/op            102738 misses
-BenchmarkBigCacheEvictZipfParallel/1000000-4            10000000               268 ns/op            106150 misses
-BenchmarkSCacheEvictZipfParallel/1000000-4              10000000               196 ns/op            437107 misses
-BenchmarkHashiCacheEvictZipfParallel/1000000-4          10000000               778 ns/op            196808 misses
-BenchmarkFreeCacheEvictUniformParallel/1000000-4        10000000               401 ns/op            723942 misses
-BenchmarkBigCacheEvictUniformParallel/1000000-4         10000000               344 ns/op            721281 misses
-BenchmarkSCacheEvictUniformParallel/1000000-4           10000000               317 ns/op           1872326 misses
-BenchmarkHashiCacheEvictUniformParallel/1000000-4       10000000               987 ns/op           1254594 misses
+BenchmarkFreeCacheSet/1000000-4                 10000000               639 ns/op                 7.00 gc
+BenchmarkBigCacheSet/1000000-4                  10000000               821 ns/op                 7.00 gc
+BenchmarkSCacheSet/1000000-4                    10000000               454 ns/op                 7.00 gc
+BenchmarkFreeCacheGet/1000000-4                 10000000               756 ns/op                10.0 gc
+BenchmarkBigCacheGet/1000000-4                  10000000               664 ns/op                12.0 gc
+BenchmarkSCacheGet/1000000-4                    10000000               555 ns/op                 5.00 gc
+BenchmarkFreeCacheSetParallel/1000000-4         10000000               438 ns/op                 8.00 gc
+BenchmarkBigCacheSetParallel/1000000-4          10000000               388 ns/op                 8.00 gc
+BenchmarkFreeCacheGetParallel/1000000-4         10000000               291 ns/op                12.0 gc
+BenchmarkBigCacheGetParallel/1000000-4          10000000               181 ns/op                12.0 gc
+BenchmarkSCacheGetParallel/1000000-4            10000000               174 ns/op                 6.00 gc
+BenchmarkFreeCacheEvictZipfParallel/1000000-4           10000000               388 ns/op                 5.00 gc            102417 misses
+BenchmarkBigCacheEvictZipfParallel/1000000-4            10000000               253 ns/op                 5.00 gc            102761 misses
+BenchmarkSCacheEvictZipfParallel/1000000-4              10000000               218 ns/op                 1.00 gc            434173 misses
+BenchmarkHashiCacheEvictZipfParallel/1000000-4          10000000               892 ns/op                 1.00 gc            199071 misses
+BenchmarkFreeCacheEvictUniformParallel/1000000-4        10000000               371 ns/op                 5.00 gc            719011 misses
+BenchmarkBigCacheEvictUniformParallel/1000000-4         10000000               346 ns/op                 5.00 gc            721349 misses
+BenchmarkSCacheEvictUniformParallel/1000000-4           10000000               320 ns/op                 1.00 gc           1880019 misses
+BenchmarkHashiCacheEvictUniformParallel/1000000-4       10000000               998 ns/op                 3.00 gc           1256406 misses
 PASS
-ok      github.com/viant/go-cache-benchmark     97.257s
+ok      github.com/viant/go-cache-benchmark     106.775s
 ```
 
 # Running tests
@@ -114,62 +116,62 @@ Generally recommended to use `-benchtime=Xx` instead of `-benchtime=Xs`, especia
 
 *Run all benchmarks*
 
-`go test -benchmem -benchtime=10000000x -bench=. .`
+`go test -benchtime=10000000x -bench=. .`
 
 *Run eviction strategy benchmarks*
 
-`go test -benchmem -benchtime=10000000x -bench=Evict .`
+`go test -benchtime=10000000x -bench=Evict .`
 
 *Extend range of possible inputs for Zipf*
 
-`ZIPF_FACTOR=8 go test -benchmem -benchtime=10000000x -bench=Zipf .`
+`ZIPF_FACTOR=8 go test -benchtime=10000000x -bench=Zipf .`
 
 *Try different ranges for possible inputs for Zipf*
 
-`SWEEP_DIST='[0.999,1,1.001,1.01,1.1,2,10,100,1000]' go test -benchmem -benchtime=10000000x -bench=Zipf`
+`SWEEP_DIST='[0.999,1,1.001,1.01,1.1,2,10,100,1000]' go test -benchtime=10000000x -bench=Zipf`
 
 ```
 goos: linux
 goarch: amd64
 pkg: github.com/viant/go-cache-benchmark
-BenchmarkFreeCacheEvictZipfParallel/1000000-0000.999-4          10000000               377 ns/op                 0 misses
-BenchmarkFreeCacheEvictZipfParallel/1000000-0001.000-4          10000000               365 ns/op                 1.00 misses
-BenchmarkFreeCacheEvictZipfParallel/1000000-0001.001-4          10000000               396 ns/op               136 misses
-BenchmarkFreeCacheEvictZipfParallel/1000000-0001.010-4          10000000               367 ns/op              1517 misses
-BenchmarkFreeCacheEvictZipfParallel/1000000-0001.100-4          10000000               399 ns/op             14432 misses
-BenchmarkFreeCacheEvictZipfParallel/1000000-0002.000-4          10000000               369 ns/op            102228 misses
-BenchmarkFreeCacheEvictZipfParallel/1000000-0010.000-4          10000000               377 ns/op            319885 misses
-BenchmarkFreeCacheEvictZipfParallel/1000000-0100.000-4          10000000               368 ns/op            566235 misses
-BenchmarkFreeCacheEvictZipfParallel/1000000-1000.000-4          10000000               382 ns/op            762181 misses
-BenchmarkBigCacheEvictZipfParallel/1000000-0000.999-4           10000000               270 ns/op                 0 misses
-BenchmarkBigCacheEvictZipfParallel/1000000-0001.000-4           10000000               240 ns/op                 1.00 misses
-BenchmarkBigCacheEvictZipfParallel/1000000-0001.001-4           10000000               247 ns/op               204 misses
-BenchmarkBigCacheEvictZipfParallel/1000000-0001.010-4           10000000               267 ns/op              2014 misses
-BenchmarkBigCacheEvictZipfParallel/1000000-0001.100-4           10000000               245 ns/op             15643 misses
-BenchmarkBigCacheEvictZipfParallel/1000000-0002.000-4           10000000               262 ns/op            104307 misses
-BenchmarkBigCacheEvictZipfParallel/1000000-0010.000-4           10000000               277 ns/op            313208 misses
-BenchmarkBigCacheEvictZipfParallel/1000000-0100.000-4           10000000               288 ns/op            583161 misses
-BenchmarkBigCacheEvictZipfParallel/1000000-1000.000-4           10000000               297 ns/op            758926 misses
-BenchmarkSCacheEvictZipfParallel/1000000-0000.999-4             10000000               210 ns/op                 0 misses
-BenchmarkSCacheEvictZipfParallel/1000000-0001.000-4             10000000               209 ns/op                 0 misses
-BenchmarkSCacheEvictZipfParallel/1000000-0001.001-4             10000000               190 ns/op            356031 misses
-BenchmarkSCacheEvictZipfParallel/1000000-0001.010-4             10000000               186 ns/op            355829 misses
-BenchmarkSCacheEvictZipfParallel/1000000-0001.100-4             10000000               194 ns/op            358652 misses
-BenchmarkSCacheEvictZipfParallel/1000000-0002.000-4             10000000               216 ns/op            466240 misses
-BenchmarkSCacheEvictZipfParallel/1000000-0010.000-4             10000000               219 ns/op            700887 misses
-BenchmarkSCacheEvictZipfParallel/1000000-0100.000-4             10000000               233 ns/op            946551 misses
-BenchmarkSCacheEvictZipfParallel/1000000-1000.000-4             10000000               249 ns/op           1175783 misses
-BenchmarkHashiCacheEvictZipfParallel/1000000-0000.999-4         10000000               696 ns/op                 0 misses
-BenchmarkHashiCacheEvictZipfParallel/1000000-0001.000-4         10000000               697 ns/op                 0 misses
-BenchmarkHashiCacheEvictZipfParallel/1000000-0001.001-4         10000000               701 ns/op               952 misses
-BenchmarkHashiCacheEvictZipfParallel/1000000-0001.010-4         10000000               726 ns/op              6467 misses
-BenchmarkHashiCacheEvictZipfParallel/1000000-0001.100-4         10000000               737 ns/op             40577 misses
-BenchmarkHashiCacheEvictZipfParallel/1000000-0002.000-4         10000000               761 ns/op            199027 misses
-BenchmarkHashiCacheEvictZipfParallel/1000000-0010.000-4         10000000               813 ns/op            543037 misses
-BenchmarkHashiCacheEvictZipfParallel/1000000-0100.000-4         10000000               835 ns/op            779987 misses
-BenchmarkHashiCacheEvictZipfParallel/1000000-1000.000-4         10000000               862 ns/op            999072 misses
+BenchmarkFreeCacheEvictZipfParallel/1000000-0000.9990-4                 10000000               400 ns/op                 5.00 gc                 0 misses
+BenchmarkFreeCacheEvictZipfParallel/1000000-0001.0000-4                 10000000               383 ns/op                 4.00 gc                 0 misses
+BenchmarkFreeCacheEvictZipfParallel/1000000-0001.0010-4                 10000000               396 ns/op                 4.00 gc               160 misses
+BenchmarkFreeCacheEvictZipfParallel/1000000-0001.0100-4                 10000000               375 ns/op                 5.00 gc              1511 misses
+BenchmarkFreeCacheEvictZipfParallel/1000000-0001.1000-4                 10000000               432 ns/op                 5.00 gc             14231 misses
+BenchmarkFreeCacheEvictZipfParallel/1000000-0002.0000-4                 10000000               372 ns/op                 5.00 gc            102576 misses
+BenchmarkFreeCacheEvictZipfParallel/1000000-0010.0000-4                 10000000               373 ns/op                 5.00 gc            312239 misses
+BenchmarkFreeCacheEvictZipfParallel/1000000-0100.0000-4                 10000000               369 ns/op                 5.00 gc            559361 misses
+BenchmarkFreeCacheEvictZipfParallel/1000000-1000.0000-4                 10000000               371 ns/op                 5.00 gc            757529 misses
+BenchmarkBigCacheEvictZipfParallel/1000000-0000.9990-4                  10000000               256 ns/op                 5.00 gc                 0 misses
+BenchmarkBigCacheEvictZipfParallel/1000000-0001.0000-4                  10000000               242 ns/op                 6.00 gc                 2.00 misses
+BenchmarkBigCacheEvictZipfParallel/1000000-0001.0010-4                  10000000               252 ns/op                 5.00 gc               193 misses
+BenchmarkBigCacheEvictZipfParallel/1000000-0001.0100-4                  10000000               259 ns/op                 6.00 gc              1634 misses
+BenchmarkBigCacheEvictZipfParallel/1000000-0001.1000-4                  10000000               242 ns/op                 6.00 gc             15454 misses
+BenchmarkBigCacheEvictZipfParallel/1000000-0002.0000-4                  10000000               246 ns/op                 5.00 gc            103738 misses
+BenchmarkBigCacheEvictZipfParallel/1000000-0010.0000-4                  10000000               295 ns/op                 5.00 gc            318739 misses
+BenchmarkBigCacheEvictZipfParallel/1000000-0100.0000-4                  10000000               296 ns/op                 6.00 gc            591390 misses
+BenchmarkBigCacheEvictZipfParallel/1000000-1000.0000-4                  10000000               305 ns/op                 5.00 gc            790669 misses
+BenchmarkSCacheEvictZipfParallel/1000000-0000.9990-4                    10000000               216 ns/op                 1.00 gc                 0 misses
+BenchmarkSCacheEvictZipfParallel/1000000-0001.0000-4                    10000000               197 ns/op                 0 gc            0 misses
+BenchmarkSCacheEvictZipfParallel/1000000-0001.0010-4                    10000000               190 ns/op                 1.00 gc            346059 misses
+BenchmarkSCacheEvictZipfParallel/1000000-0001.0100-4                    10000000               185 ns/op                 1.00 gc            348027 misses
+BenchmarkSCacheEvictZipfParallel/1000000-0001.1000-4                    10000000               199 ns/op                 1.00 gc            348070 misses
+BenchmarkSCacheEvictZipfParallel/1000000-0002.0000-4                    10000000               194 ns/op                 0 gc       462426 misses
+BenchmarkSCacheEvictZipfParallel/1000000-0010.0000-4                    10000000               220 ns/op                 1.00 gc            720425 misses
+BenchmarkSCacheEvictZipfParallel/1000000-0100.0000-4                    10000000               225 ns/op                 1.00 gc            989807 misses
+BenchmarkSCacheEvictZipfParallel/1000000-1000.0000-4                    10000000               250 ns/op                 1.00 gc           1209708 misses
+BenchmarkHashiCacheEvictZipfParallel/1000000-0000.9990-4                10000000               850 ns/op                 2.00 gc                 0 misses
+BenchmarkHashiCacheEvictZipfParallel/1000000-0001.0000-4                10000000               829 ns/op                 1.00 gc                 0 misses
+BenchmarkHashiCacheEvictZipfParallel/1000000-0001.0010-4                10000000               842 ns/op                 1.00 gc              1006 misses
+BenchmarkHashiCacheEvictZipfParallel/1000000-0001.0100-4                10000000               843 ns/op                 2.00 gc              6172 misses
+BenchmarkHashiCacheEvictZipfParallel/1000000-0001.1000-4                10000000               860 ns/op                 1.00 gc             41971 misses
+BenchmarkHashiCacheEvictZipfParallel/1000000-0002.0000-4                10000000               885 ns/op                 1.00 gc            198142 misses
+BenchmarkHashiCacheEvictZipfParallel/1000000-0010.0000-4                10000000               907 ns/op                 1.00 gc            481880 misses
+BenchmarkHashiCacheEvictZipfParallel/1000000-0100.0000-4                10000000               968 ns/op                 1.00 gc            762560 misses
+BenchmarkHashiCacheEvictZipfParallel/1000000-1000.0000-4                10000000               977 ns/op                 2.00 gc            958817 misses
 PASS
-ok      github.com/viant/go-cache-benchmark     190.162s
+ok      github.com/viant/go-cache-benchmark     187.244s
 ```
 
 *Try extreme ranges for possible inputs for both Zipf and uniform distributions*
@@ -187,40 +189,40 @@ go: downloading github.com/cespare/xxhash v1.1.0
 goos: linux
 goarch: amd64
 pkg: github.com/viant/go-cache-benchmark
-BenchmarkFreeCacheEvictZipfParallel/1000000-000000000.1-4               10000000               402 ns/op                 0 misses
-BenchmarkFreeCacheEvictZipfParallel/1000000-000000100.0-4               10000000               398 ns/op            566003 misses
-BenchmarkFreeCacheEvictZipfParallel/1000000-000010000.0-4               10000000               369 ns/op            914335 misses
-BenchmarkFreeCacheEvictZipfParallel/1000000-100000000.0-4               10000000               460 ns/op           1344099 misses
-BenchmarkBigCacheEvictZipfParallel/1000000-000000000.1-4                10000000               229 ns/op                 0 misses
-BenchmarkBigCacheEvictZipfParallel/1000000-000000100.0-4                10000000               325 ns/op            580607 misses
-BenchmarkBigCacheEvictZipfParallel/1000000-000010000.0-4                10000000               354 ns/op            920043 misses
-BenchmarkBigCacheEvictZipfParallel/1000000-100000000.0-4                10000000               355 ns/op           1373385 misses
-BenchmarkSCacheEvictZipfParallel/1000000-000000000.1-4                  10000000               194 ns/op                 0 misses
-BenchmarkSCacheEvictZipfParallel/1000000-000000100.0-4                  10000000               248 ns/op            983033 misses
-BenchmarkSCacheEvictZipfParallel/1000000-000010000.0-4                  10000000               248 ns/op           1375111 misses
-BenchmarkSCacheEvictZipfParallel/1000000-100000000.0-4                  10000000               274 ns/op           1722078 misses
-BenchmarkHashiCacheEvictZipfParallel/1000000-000000000.1-4              10000000               607 ns/op                 0 misses
-BenchmarkHashiCacheEvictZipfParallel/1000000-000000100.0-4              10000000               832 ns/op            749243 misses
-BenchmarkHashiCacheEvictZipfParallel/1000000-000010000.0-4              10000000               878 ns/op           1137320 misses
-BenchmarkHashiCacheEvictZipfParallel/1000000-100000000.0-4              10000000               927 ns/op           1502707 misses
-BenchmarkFreeCacheEvictUniformParallel/1000000-000000000.1-4            10000000               365 ns/op                 0 misses
-BenchmarkFreeCacheEvictUniformParallel/1000000-000000100.0-4            10000000               412 ns/op           2459946 misses
-BenchmarkFreeCacheEvictUniformParallel/1000000-000010000.0-4            10000000               412 ns/op           2500175 misses
-BenchmarkFreeCacheEvictUniformParallel/1000000-100000000.0-4            10000000               420 ns/op           2501747 misses
-BenchmarkBigCacheEvictUniformParallel/1000000-000000000.1-4             10000000               269 ns/op                 0 misses
-BenchmarkBigCacheEvictUniformParallel/1000000-000000100.0-4             10000000               418 ns/op           2463058 misses
-BenchmarkBigCacheEvictUniformParallel/1000000-000010000.0-4             10000000               417 ns/op           2506048 misses
-BenchmarkBigCacheEvictUniformParallel/1000000-100000000.0-4             10000000               415 ns/op           2505713 misses
-BenchmarkSCacheEvictUniformParallel/1000000-000000000.1-4               10000000               235 ns/op                 0 misses
-BenchmarkSCacheEvictUniformParallel/1000000-000000100.0-4               10000000               299 ns/op           2784388 misses
-BenchmarkSCacheEvictUniformParallel/1000000-000010000.0-4               10000000               300 ns/op           2805622 misses
-BenchmarkSCacheEvictUniformParallel/1000000-100000000.0-4               10000000               316 ns/op           2827530 misses
-BenchmarkHashiCacheEvictUniformParallel/1000000-000000000.1-4           10000000               797 ns/op                 0 misses
-BenchmarkHashiCacheEvictUniformParallel/1000000-000000100.0-4           10000000               897 ns/op           2495135 misses
-BenchmarkHashiCacheEvictUniformParallel/1000000-000010000.0-4           10000000               862 ns/op           2506445 misses
-BenchmarkHashiCacheEvictUniformParallel/1000000-100000000.0-4           10000000               908 ns/op           2512219 misses
+BenchmarkFreeCacheEvictZipfParallel/1000000-000000000.1-4               10000000               437 ns/op                 4.00 gc                 0 misses
+BenchmarkFreeCacheEvictZipfParallel/1000000-000000100.0-4               10000000               383 ns/op                 5.00 gc            561977 misses
+BenchmarkFreeCacheEvictZipfParallel/1000000-000010000.0-4               10000000               391 ns/op                 4.00 gc            931059 misses
+BenchmarkFreeCacheEvictZipfParallel/1000000-100000000.0-4               10000000               386 ns/op                 4.00 gc           1342408 misses
+BenchmarkBigCacheEvictZipfParallel/1000000-000000000.1-4                10000000               249 ns/op                 6.00 gc                 0 misses
+BenchmarkBigCacheEvictZipfParallel/1000000-000000100.0-4                10000000               316 ns/op                 5.00 gc            576990 misses
+BenchmarkBigCacheEvictZipfParallel/1000000-000010000.0-4                10000000               339 ns/op                 5.00 gc            950480 misses
+BenchmarkBigCacheEvictZipfParallel/1000000-100000000.0-4                10000000               382 ns/op                 5.00 gc           1370620 misses
+BenchmarkSCacheEvictZipfParallel/1000000-000000000.1-4                  10000000               185 ns/op                 0 gc            0 misses
+BenchmarkSCacheEvictZipfParallel/1000000-000000100.0-4                  10000000               224 ns/op                 1.00 gc            984134 misses
+BenchmarkSCacheEvictZipfParallel/1000000-000010000.0-4                  10000000               262 ns/op                 1.00 gc           1345075 misses
+BenchmarkSCacheEvictZipfParallel/1000000-100000000.0-4                  10000000               285 ns/op                 1.00 gc           1714319 misses
+BenchmarkHashiCacheEvictZipfParallel/1000000-000000000.1-4              10000000               782 ns/op                 1.00 gc                 0 misses
+BenchmarkHashiCacheEvictZipfParallel/1000000-000000100.0-4              10000000               979 ns/op                 2.00 gc            767605 misses
+BenchmarkHashiCacheEvictZipfParallel/1000000-000010000.0-4              10000000              1039 ns/op                 2.00 gc           1166627 misses
+BenchmarkHashiCacheEvictZipfParallel/1000000-100000000.0-4              10000000              1066 ns/op                 2.00 gc           1499113 misses
+BenchmarkFreeCacheEvictUniformParallel/1000000-000000000.1-4            10000000               378 ns/op                 5.00 gc                 0 misses
+BenchmarkFreeCacheEvictUniformParallel/1000000-000000100.0-4            10000000               408 ns/op                 4.00 gc           2460063 misses
+BenchmarkFreeCacheEvictUniformParallel/1000000-000010000.0-4            10000000               410 ns/op                 4.00 gc           2501610 misses
+BenchmarkFreeCacheEvictUniformParallel/1000000-100000000.0-4            10000000               410 ns/op                 5.00 gc           2500814 misses
+BenchmarkBigCacheEvictUniformParallel/1000000-000000000.1-4             10000000               259 ns/op                 5.00 gc                 0 misses
+BenchmarkBigCacheEvictUniformParallel/1000000-000000100.0-4             10000000               414 ns/op                 4.00 gc           2463603 misses
+BenchmarkBigCacheEvictUniformParallel/1000000-000010000.0-4             10000000               412 ns/op                 4.00 gc           2505315 misses
+BenchmarkBigCacheEvictUniformParallel/1000000-100000000.0-4             10000000               422 ns/op                 6.00 gc           2505043 misses
+BenchmarkSCacheEvictUniformParallel/1000000-000000000.1-4               10000000               218 ns/op                 0 gc            0 misses
+BenchmarkSCacheEvictUniformParallel/1000000-000000100.0-4               10000000               305 ns/op                 1.00 gc           2785412 misses
+BenchmarkSCacheEvictUniformParallel/1000000-000010000.0-4               10000000               318 ns/op                 1.00 gc           2809346 misses
+BenchmarkSCacheEvictUniformParallel/1000000-100000000.0-4               10000000               305 ns/op                 2.00 gc           2795954 misses
+BenchmarkHashiCacheEvictUniformParallel/1000000-000000000.1-4           10000000               800 ns/op                 2.00 gc                 0 misses
+BenchmarkHashiCacheEvictUniformParallel/1000000-000000100.0-4           10000000               880 ns/op                 3.00 gc           2481520 misses
+BenchmarkHashiCacheEvictUniformParallel/1000000-000010000.0-4           10000000               882 ns/op                 4.00 gc           2506585 misses
+BenchmarkHashiCacheEvictUniformParallel/1000000-100000000.0-4           10000000               945 ns/op                 3.00 gc           2501872 misses
 PASS
-ok      github.com/viant/go-cache-benchmark     186.709s
+ok      github.com/viant/go-cache-benchmark     187.620s
 ```
 
 
@@ -228,7 +230,8 @@ ok      github.com/viant/go-cache-benchmark     186.709s
 
 `docker run --rm -it -v "$PWD":/w -w /w golang:1.15 go test -bench=. -benchtime=10000000x .`
 
-Note that you can use whatever version of Go (after 1.5 for best results).
+Note that you can use whatever version of Go (after 1.5 for best results). 
+Also, some of the examples above use Docker.
 
 ## Options
 
@@ -245,9 +248,11 @@ Refer to [standard library documentation](https://pkg.go.dev/cmd/go/internal/tes
 
 See [standard library `rand`'s `Zipf` type](https://pkg.go.dev/math/rand#NewZipf)
 
-* `ZIPF_FACTOR` - defaults to `2`. Multiplies the maximum of range of the Zipf distribution, used to calculate `imax`. Only applies if `SWEEP_DIST` is not provided.
+* `ZIPF_FACTOR` - defaults to `2`. Multiplies the maximum of range of the input distribution, used to calculate `imax`. Only applies if `SWEEP_DIST` is not provided. Note that this also applies to the uniform distribution test.
 * `ZIPF_S` - defaults to `1.01`. Sets curvature of Zipf probability (increases hit likelihood dramatically), set as `s`.
 * `ZIPF_V` - defaults to `1`. Sets initial offset for Zipf probability, set as `v`.
+
+* `SWEEP_DIST` - defaults to effectively `[ZIPF_FACTOR]`. Should be a JSON string containing a series of `float64` values to multiply the maximum input possible, in relation to the expected cache size (related to `TEST_SIZE_FACTOR`). For example, if `SWEEP_DIST='[2,5]'` (the single quotes are for escaping shell interpretation of `[]`), then the tests will use 2x and 5x for maximum input possible, relative to the cache size, which is 1,000,000 by default - so this means that for the Zipf distribution, the maximum output value will be 2,000,000 for the 2x and 5,000,00 for the 5x. Increasing the number increases the likelihood of a cache miss.
 
 * `SCACHE_ENTRIES_DIV` - defaults to `2`. Sets the number of entries that are used in `scache` configuration initialization, since [`scache` allocates twice the amount of memory than expected](https://github.com/viant/scache/blob/master/config.go#L33). Set to `1` to use twice the amount of memory than other caches. The resulting number of entries supported by the cache will be `expectedEntries / SCACHE_ENTRIES_DIV`. To get a specific "extended" size, divide 2 by the desired additional size. For example, to allocate 10% more memory for `scache`, use `SCACHE_ENTRIES_DIV` of `2 / 1.1` or `1.8182`.
 

@@ -56,6 +56,15 @@ func BenchmarkBigCacheSet(b *testing.B) {
 	})
 }
 
+func BenchmarkSCacheSet(b *testing.B) {
+	testWithSizes(b, func(b *testing.B, testSize int) {
+		cache := initSCache(testSize)
+		for i := 0; i < b.N; i++ {
+			cache.Set(key(i%testSize), value())
+		}
+	})
+}
+
 // serial Get
 
 func BenchmarkFreeCacheGet(b *testing.B) {
@@ -77,7 +86,22 @@ func BenchmarkFreeCacheGet(b *testing.B) {
 func BenchmarkBigCacheGet(b *testing.B) {
 	testWithSizes(b, func(b *testing.B, testSize int) {
 		b.StopTimer()
-		cache := initBigCache(b.N)
+		cache := initBigCache(testSize)
+		for i := 0; i < testSize; i++ {
+			cache.Set(key(i), value())
+		}
+
+		b.StartTimer()
+		for i := 0; i < b.N; i++ {
+			cache.Get(key(i % testSize))
+		}
+	})
+}
+
+func BenchmarkSCacheGet(b *testing.B) {
+	testWithSizes(b, func(b *testing.B, testSize int) {
+		b.StopTimer()
+		cache := initSCache(testSize)
 		for i := 0; i < testSize; i++ {
 			cache.Set(key(i), value())
 		}
@@ -196,9 +220,7 @@ func BenchmarkFreeCacheEvictZipfParallel(b *testing.B) {
 			cache.Set([]byte(key(i)), value(), 0)
 		}
 
-		var misses uint64
-		b.StartTimer()
-		b.RunParallel(func(pb *testing.PB) {
+		runParallel(b, func(pb *testing.PB) uint64 {
 			zipf := getZipf()
 
 			var missed uint64
@@ -215,11 +237,8 @@ func BenchmarkFreeCacheEvictZipfParallel(b *testing.B) {
 				}
 			}
 
-			atomic.AddUint64(&misses, missed)
+			return missed
 		})
-
-		b.StopTimer()
-		b.ReportMetric(float64(misses), "misses")
 	})
 }
 
@@ -230,9 +249,7 @@ func BenchmarkBigCacheEvictZipfParallel(b *testing.B) {
 			cache.Set(key(i), value())
 		}
 
-		var misses uint64
-		b.StartTimer()
-		b.RunParallel(func(pb *testing.PB) {
+		runParallel(b, func(pb *testing.PB) uint64 {
 			zipf := getZipf()
 
 			var missed uint64
@@ -249,11 +266,8 @@ func BenchmarkBigCacheEvictZipfParallel(b *testing.B) {
 				}
 			}
 
-			atomic.AddUint64(&misses, missed)
+			return missed
 		})
-
-		b.StopTimer()
-		b.ReportMetric(float64(misses), "misses")
 	})
 }
 
@@ -264,9 +278,7 @@ func BenchmarkSCacheEvictZipfParallel(b *testing.B) {
 			cache.Set(key(i), value())
 		}
 
-		var totalMisses uint64
-		b.StartTimer()
-		b.RunParallel(func(pb *testing.PB) {
+		runParallel(b, func(pb *testing.PB) uint64 {
 			zipf := getZipf()
 
 			var misses uint64
@@ -282,17 +294,13 @@ func BenchmarkSCacheEvictZipfParallel(b *testing.B) {
 				}
 			}
 
-			atomic.AddUint64(&totalMisses, misses)
+			return misses
 		})
-
-		b.StopTimer()
-		b.ReportMetric(float64(totalMisses), "misses")
 	})
 }
 
 func BenchmarkHashiCacheEvictZipfParallel(b *testing.B) {
 	testSweepZipf(b, func(b *testing.B, testSize int, missPenalty time.Duration, getZipf func() distMaker) {
-		b.StopTimer()
 		cache, err := lru.New(testSize)
 		if err != nil {
 			b.Errorf("%s", err)
@@ -302,9 +310,7 @@ func BenchmarkHashiCacheEvictZipfParallel(b *testing.B) {
 			cache.Add(key(i), value())
 		}
 
-		var totalMisses uint64
-		b.StartTimer()
-		b.RunParallel(func(pb *testing.PB) {
+		runParallel(b, func(pb *testing.PB) uint64 {
 			zipf := getZipf()
 
 			var misses uint64
@@ -320,11 +326,8 @@ func BenchmarkHashiCacheEvictZipfParallel(b *testing.B) {
 				}
 			}
 
-			atomic.AddUint64(&totalMisses, misses)
+			return misses
 		})
-
-		b.StopTimer()
-		b.ReportMetric(float64(totalMisses), "misses")
 	})
 }
 
@@ -337,9 +340,7 @@ func BenchmarkFreeCacheEvictUniformParallel(b *testing.B) {
 			cache.Set([]byte(key(i)), value(), 0)
 		}
 
-		var misses uint64
-		b.StartTimer()
-		b.RunParallel(func(pb *testing.PB) {
+		runParallel(b, func(pb *testing.PB) uint64 {
 			zipf := getDist()
 
 			var missed uint64
@@ -356,11 +357,8 @@ func BenchmarkFreeCacheEvictUniformParallel(b *testing.B) {
 				}
 			}
 
-			atomic.AddUint64(&misses, missed)
+			return missed
 		})
-
-		b.StopTimer()
-		b.ReportMetric(float64(misses), "misses")
 	})
 }
 
@@ -371,9 +369,7 @@ func BenchmarkBigCacheEvictUniformParallel(b *testing.B) {
 			cache.Set(key(i), value())
 		}
 
-		var misses uint64
-		b.StartTimer()
-		b.RunParallel(func(pb *testing.PB) {
+		runParallel(b, func(pb *testing.PB) uint64 {
 			zipf := getDist()
 
 			var missed uint64
@@ -390,11 +386,8 @@ func BenchmarkBigCacheEvictUniformParallel(b *testing.B) {
 				}
 			}
 
-			atomic.AddUint64(&misses, missed)
+			return missed
 		})
-
-		b.StopTimer()
-		b.ReportMetric(float64(misses), "misses")
 	})
 }
 
@@ -405,9 +398,7 @@ func BenchmarkSCacheEvictUniformParallel(b *testing.B) {
 			cache.Set(key(i), value())
 		}
 
-		var totalMisses uint64
-		b.StartTimer()
-		b.RunParallel(func(pb *testing.PB) {
+		runParallel(b, func(pb *testing.PB) uint64 {
 			zipf := getDist()
 
 			var misses uint64
@@ -423,11 +414,8 @@ func BenchmarkSCacheEvictUniformParallel(b *testing.B) {
 				}
 			}
 
-			atomic.AddUint64(&totalMisses, misses)
+			return misses
 		})
-
-		b.StopTimer()
-		b.ReportMetric(float64(totalMisses), "misses")
 	})
 }
 
@@ -443,9 +431,7 @@ func BenchmarkHashiCacheEvictUniformParallel(b *testing.B) {
 			cache.Add(key(i), value())
 		}
 
-		var totalMisses uint64
-		b.StartTimer()
-		b.RunParallel(func(pb *testing.PB) {
+		runParallel(b, func(pb *testing.PB) uint64 {
 			zipf := getDist()
 
 			var misses uint64
@@ -461,15 +447,32 @@ func BenchmarkHashiCacheEvictUniformParallel(b *testing.B) {
 				}
 			}
 
-			atomic.AddUint64(&totalMisses, misses)
+			return misses
 		})
-
-		b.StopTimer()
-		b.ReportMetric(float64(totalMisses), "misses")
 	})
 }
 
 // util functions
+
+func runParallel(b *testing.B, rpf func(pb *testing.PB) uint64) {
+	var totalMisses uint64
+
+	var startMem runtime.MemStats
+	runtime.ReadMemStats(&startMem)
+
+	b.StartTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		misses := rpf(pb)
+		atomic.AddUint64(&totalMisses, misses)
+	})
+	b.StopTimer()
+
+	var endMem runtime.MemStats
+	runtime.ReadMemStats(&endMem)
+	b.ReportMetric(float64(endMem.NumGC-startMem.NumGC), "gc")
+
+	b.ReportMetric(float64(totalMisses), "misses")
+}
 
 func getEnvInt64(varName string, defaultVal int64) int64 {
 	vs := os.Getenv(varName)
@@ -505,10 +508,17 @@ func getEnvCacheSizes() []int {
 
 func testWithSizes(b *testing.B, f func(b *testing.B, testSize int)) {
 	testSizes := getEnvCacheSizes()
-
 	for _, testSize := range testSizes {
 		b.Run(fmt.Sprintf("%d", testSize), func(b *testing.B) {
+			var startMem runtime.MemStats
+			runtime.ReadMemStats(&startMem)
+
 			f(b, testSize)
+
+			var endMem runtime.MemStats
+			runtime.ReadMemStats(&endMem)
+
+			b.ReportMetric(float64(endMem.NumGC-startMem.NumGC), "gc")
 		})
 	}
 }
