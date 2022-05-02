@@ -215,7 +215,7 @@ Refer to [standard library documentation](https://pkg.go.dev/cmd/go/internal/tes
 
 ### Zipf & distribution modifiers
 
-* `MISS_PENALTY` - defaults to `0`. Sets milliseconds of wait in the case of a cache miss for benchmarks that test eviction.
+* `MISS_PENALTY` - defaults to `0`. Sets microseconds of wait in the case of a cache miss for benchmarks that test eviction.
 
 See [standard library `rand`'s `Zipf` type](https://pkg.go.dev/math/rand#NewZipf) for more information about Zipf
 

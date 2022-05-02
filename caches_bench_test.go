@@ -724,7 +724,7 @@ func value() []byte {
 
 func getMissPenalty() time.Duration {
 	v := getEnvInt64("MISS_PENALTY", 0)
-	return time.Duration(v) * time.Millisecond
+	return time.Duration(v) * time.Microsecond
 }
 
 // cache helpers
