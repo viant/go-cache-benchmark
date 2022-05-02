@@ -205,7 +205,11 @@ Refer to [standard library documentation](https://pkg.go.dev/cmd/go/internal/tes
 
 * `MULTI_SIZES` - set to non-empty string to only benchmark the run with 100M, elements stored, then 10M, then lastly 100k elements (`TEST_SIZE_FACTOR` still applies).
 
-See [standard library `rand`'s `Zipf` type](https://pkg.go.dev/math/rand#NewZipf)
+### Zipf & distribution modifiers
+
+* `MISS_PENALTY` - defaults to `0`. Sets milliseconds of wait in the case of a cache miss for benchmarks that test eviction.
+
+See [standard library `rand`'s `Zipf` type](https://pkg.go.dev/math/rand#NewZipf) for more information about Zipf
 
 * `ZIPF_FACTOR` - defaults to `2`. Multiplies the maximum of range of the input distribution, used to calculate `imax`. Only applies if `SWEEP_DIST` is not provided. Note that this also applies to the uniform distribution test.
 * `ZIPF_S` - defaults to `1.01`. Sets curvature of Zipf probability (increases hit likelihood dramatically), set as `s`.
@@ -214,10 +218,10 @@ See [standard library `rand`'s `Zipf` type](https://pkg.go.dev/math/rand#NewZipf
 * `SWEEP_DIST` - defaults to effectively `[ZIPF_FACTOR]`. Should be a JSON string containing a series of `float64` values to multiply the maximum input possible, in relation to the expected cache size (related to `TEST_SIZE_FACTOR`). For example, if `SWEEP_DIST='[2,5]'` (the single quotes are for escaping shell interpretation of `[]`), then the tests will use 2x and 5x for maximum input possible, relative to the cache size (which is 1M by default) - so this means that for the Zipf distribution, the maximum output value will be 2M for the 2x and 5M for the 5x. Increasing the number increases the likelihood of a cache miss.
     - Regarding the benchmark description for sweeps, the benchmark name is followed by 3 numbers - the first number is the cache size, the second number is the maximum distribution value multiplier, and the last number is the parallelization.
 
+### `scache` modifiers
+
 * `SCACHE_ENTRIES_BUFFER` - default to `1`. Multiplies the amount of entries provided to the `scache` configuration. `SCACHE_ENTRIES_DIV` is still applied, but this is a simpler interface for seeing how much additional memory `scache` requires to for achieving comparable hit rates with other caches.
 * `SCACHE_ENTRIES_DIV` - defaults to `2`. Sets the number of entries that are used in `scache` configuration initialization, since [`scache` allocates twice the amount of memory than expected](https://github.com/viant/scache/blob/master/config.go#L33). Set to `1` to use twice the amount of memory than other caches. The resulting number of entries supported by the cache will be `expectedEntries / SCACHE_ENTRIES_DIV`. To get a specific "extended" size, divide 2 by the desired additional size. For example, to allocate 10% more memory for `scache`, use `SCACHE_ENTRIES_DIV` of `2 / 1.1` or `1.8182`.
-
-* `MISS_PENALTY` - defaults to `0`. Sets milliseconds of wait in the case of a cache miss for benchmarks that test eviction.
 
 ### Golang provided environment variables
 

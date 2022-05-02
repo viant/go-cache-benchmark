@@ -1,7 +1,7 @@
 # Further observations on cache implementations
 
 The cache implementations seem to mainly be incremental improvements upon other inspirations. 
-The reason why there are so many cache implementations (instead of one mega-implementation) are beyond me.
+The reason why there are so many cache implementations (instead of one mega-implementation) are [beyond me](https://xkcd.com/927).
 
 # Common implementation differentiators
 
