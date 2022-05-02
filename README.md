@@ -27,14 +27,20 @@ The benchmarks run, for each cache implementation, by creating a cache with a se
 
 # Observations
 
-1. `scache` seems to allocate the least memory on read or write. This is shown by looking at the GC count (`gc`) metric.
+1. `scache` seems to allocate the least memory on read or write. This is shown by looking at the GC count (`gc`) metric. Using default GC configuration, `scache` seems to have about 1/10th the number of GCs. This is more evident the longer the benchmarks are run.
 2. `scache` seems to be generally the fastest performing cache. Standard operation seems to occur in 68% of `BigCache` and 45% of `freecache`.
-3. `scache` tends to have the highest miss rate with the eviction test. 
+3. `scache` tends to have the highest miss rate with the eviction tests. 
     - For the Zipf distribution, `freecache` and `bigcache` seem to get about 3% miss rates, `golang-lru` gets about 7%, but `scache` seems to get about a 11% miss rate. 
     - For the uniform distribution, `freecache` and `bigcache` get about 22%, `golang-lru` gets about 50%, and `scache` gets about 65% miss rate.
     - This could be problematic if cache misses are dramatically more expensive than cache hits.
 4. `scache` seems to start dramatically drop hit rate as soon as the cache is too small, whereas the other caches slowly begin to drop their hit rates.
-5. `scache` seems to have consistent performance when an eviction is required, whereas other cache implementations can be twice as slow. Do note that within the scope of usage, the cacheover head is most likely not the biggest cost. Although "twice as slow" may sound scary, if the application using the cache takes about 1ms to respond to a request, the cache overhead on miss would at most add 0.001ms or about 0.1% additional time to the request. Also, as a main purpose of a cache is to memoize long-running computations, usually the cache overhead from a miss is insigificant to the computation required to populate the cache entry.
+5. `scache` seems to have consistent performance when an eviction is required, whereas other cache implementations can be twice as slow. 
+6. `scache` requires at least 2x as much memory to get a similar hit rate as other caches.
+7. For difficult to cache data usage distributions, hit rates eventually converge for all caches.
+
+Do note that within the scope of usage, the cache overhead is most likely not the biggest cost. 
+Although "twice as slow" may sound scary, if the application using the cache takes about 1ms to respond to a request, the cache overhead on miss would at most add 0.001ms or about 0.1% additional time to the request. 
+Also, as one of the primary purposes of a cache is to memoize long-running computations, usually the cache overhead from a miss is insigificant to the computation required to populate the cache entry.
 
 # Sample results
 
@@ -204,6 +210,8 @@ Refer to [standard library documentation](https://pkg.go.dev/cmd/go/internal/tes
 * `TEST_SIZE_FACTOR` - defaults to `1`. Multiplies the number of elements stored.
 
 * `MULTI_SIZES` - set to non-empty string to only benchmark the run with 100M, elements stored, then 10M, then lastly 100k elements (`TEST_SIZE_FACTOR` still applies).
+
+* `PRECACHE_FACTOR` - defaults to `1`. Multiple of the cache size, determines how much of the cache is pre-populated before the eviction benchmarks are run.
 
 ### Zipf & distribution modifiers
 
