@@ -33,7 +33,7 @@ The benchmarks run, for each cache implementation, by creating a cache with a se
     - For the Zipf distribution, `freecache` and `bigcache` seem to get about 3% miss rates, `golang-lru` gets about 7%, but `scache` seems to get about a 11% miss rate. 
     - For the uniform distribution, `freecache` and `bigcache` get about 22%, `golang-lru` gets about 50%, and `scache` gets about 65% miss rate.
     - This could be problematic if cache misses are dramatically more expensive than cache hits.
-4. `scache` seems to start dramatically drop hit rate as soon as the cache is too small, whereas the other caches slowly beginto drop their hit rates.
+4. `scache` seems to start dramatically drop hit rate as soon as the cache is too small, whereas the other caches slowly begin to drop their hit rates.
 5. `scache` seems to have consistent performance when an eviction is required, whereas other cache implementations can be twice as slow. Do note that within the scope of usage, the cacheover head is most likely not the biggest cost. Although "twice as slow" may sound scary, if the application using the cache takes about 1ms to respond to a request, the cache overhead on miss would at most add 0.001ms or about 0.1% additional time to the request. Also, as a main purpose of a cache is to memoize long-running computations, usually the cache overhead from a miss is insigificant to the computation required to populate the cache entry.
 
 # Sample results
